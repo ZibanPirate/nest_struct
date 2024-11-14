@@ -6,6 +6,10 @@ description = "Nest struct definitions with minimal syntax changes"
 license = "MIT"
 
 [dependencies]
+quote = "1.0.37"
+
+[dev-dependencies]
+macrotest = "1"
 
 [lib]
 proc-macro = true
