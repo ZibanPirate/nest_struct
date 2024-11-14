@@ -1,4 +1,4 @@
 #[test]
-pub fn pass() {
+pub fn expand() {
     macrotest::expand("tests/cases/*.rs");
 }

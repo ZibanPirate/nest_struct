@@ -1,0 +1,4 @@
+[jobs.expand]
+command = ["cargo", "expand", "--color", "always", "--test", "develop"]
+watch = ["src", "../nestruct/src"]
+need_stdout = true
