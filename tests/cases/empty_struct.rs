@@ -2,4 +2,4 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct HelloWorld;
+struct EmptyStruct;

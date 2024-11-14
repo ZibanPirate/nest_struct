@@ -7,6 +7,7 @@ license = "MIT"
 
 [dependencies]
 quote = "1.0.37"
+syn = "2.0.87"
 
 [dev-dependencies]
 macrotest = "1"
