@@ -38,13 +38,14 @@ The expanded code for the struct above would look like this:
 
 ```rust
 #[derive(serde::Deserialize)]
-struct APIResponse_Abilities_Ability {
+struct APIResponseAbilitiesAbility {
     name: String,
     url: String,
 }
+
 #[derive(serde::Deserialize)]
-struct APIResponse_Abilities {
-    ability: APIResponse_Abilities_Ability,
+struct APIResponseAbilities {
+    ability: APIResponseAbilitiesAbility,
     is_hidden: bool,
     slot: u32,
 }
@@ -53,7 +54,7 @@ struct APIResponse_Abilities {
 struct APIResponse {
     id: u32,
     name: String,
-    abilities: Vec<APIResponse_Abilities>,
+    abilities: Vec<APIResponseAbilities>,
 }
 ```
 
