@@ -1,3 +1,5 @@
+![Maintenance](https://img.shields.io/badge/maintenance-activly--developed-brightgreen.svg)
+
 # nest_struct
 
 Nest struct definitions with minimal syntax changes in Rust
