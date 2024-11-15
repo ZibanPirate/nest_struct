@@ -36,13 +36,14 @@
 //!
 //! ```rust
 //! #[derive(serde::Deserialize)]
-//! struct APIResponse_Abilities_Ability {
+//! struct APIResponseAbilitiesAbility {
 //!     name: String,
 //!     url: String,
 //! }
+//!
 //! #[derive(serde::Deserialize)]
-//! struct APIResponse_Abilities {
-//!     ability: APIResponse_Abilities_Ability,
+//! struct APIResponseAbilities {
+//!     ability: APIResponseAbilitiesAbility,
 //!     is_hidden: bool,
 //!     slot: u32,
 //! }
@@ -51,7 +52,7 @@
 //! struct APIResponse {
 //!     id: u32,
 //!     name: String,
-//!     abilities: Vec<APIResponse_Abilities>,
+//!     abilities: Vec<APIResponseAbilities>,
 //! }
 //! ```
 //!
@@ -124,7 +125,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                             n => &n.to_string(),
                         };
                         let struct_name_maybe_numbered = format!(
-                            "{}_{}{}",
+                            "{}{}{}",
                             root_struct_name,
                             field_name.replace("r#", "").to_case(Case::Pascal),
                             struct_name_index
@@ -189,7 +190,6 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #(#additional_structs)*
 
         #(#root_attrs)*
-        #[allow(non_camel_case_types)]
         #root_vis struct #root_struct_ident #root_generics {
             #(#new_root_fields),*
         }

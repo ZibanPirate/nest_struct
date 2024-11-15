@@ -1,27 +1,23 @@
 #![allow(dead_code)]
 #[macro_use]
 extern crate nest_struct;
-#[allow(non_camel_case_types)]
-struct Level3NestedStructWithGeneric_Name_Father_GrandFather {
+struct Level3NestedStructWithGenericNameFatherGrandFather {
     age: AGE,
     first: String,
     last: String,
 }
-#[allow(non_camel_case_types)]
-struct Level3NestedStructWithGeneric_Name_Father {
+struct Level3NestedStructWithGenericNameFather {
     first: String,
     last: String,
-    grand_father: Level3NestedStructWithGeneric_Name_Father_GrandFather,
+    grand_father: Level3NestedStructWithGenericNameFatherGrandFather,
 }
-#[allow(non_camel_case_types)]
-struct Level3NestedStructWithGeneric_Name {
+struct Level3NestedStructWithGenericName {
     first: String,
     last: String,
     middle: Option<String>,
-    father: Level3NestedStructWithGeneric_Name_Father,
+    father: Level3NestedStructWithGenericNameFather,
 }
-#[allow(non_camel_case_types)]
 struct Level3NestedStructWithGeneric<AGE> {
     id: u32,
-    name: Level3NestedStructWithGeneric_Name,
+    name: Level3NestedStructWithGenericName,
 }

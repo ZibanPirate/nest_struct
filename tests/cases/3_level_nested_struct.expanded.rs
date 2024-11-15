@@ -1,26 +1,22 @@
 #![allow(dead_code)]
 #[macro_use]
 extern crate nest_struct;
-#[allow(non_camel_case_types)]
-struct Level3NestedStruct_Name_Father_GrandFather {
+struct Level3NestedStructNameFatherGrandFather {
     first: String,
     last: String,
 }
-#[allow(non_camel_case_types)]
-struct Level3NestedStruct_Name_Father {
+struct Level3NestedStructNameFather {
     first: String,
     last: String,
-    grand_father: Level3NestedStruct_Name_Father_GrandFather,
+    grand_father: Level3NestedStructNameFatherGrandFather,
 }
-#[allow(non_camel_case_types)]
-struct Level3NestedStruct_Name {
+struct Level3NestedStructName {
     first: String,
     last: String,
     middle: Option<String>,
-    father: Level3NestedStruct_Name_Father,
+    father: Level3NestedStructNameFather,
 }
-#[allow(non_camel_case_types)]
 struct Level3NestedStruct {
     id: u32,
-    name: Level3NestedStruct_Name,
+    name: Level3NestedStructName,
 }
