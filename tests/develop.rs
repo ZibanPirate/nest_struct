@@ -12,6 +12,14 @@ pub struct NonNestedStruct<ID> {
         first: String,
         last: String,
         middle: Option<String>,
+        father: nest! {
+            first: String,
+            last: String,
+            grand_father: nest! {
+                first: String,
+                last: String,
+            },
+        },
     },
     parent: nest_with_generic! {
         id: ID,

@@ -97,6 +97,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         indices_to_remove.push(index + 2);
 
                         additional_structs.push(quote! {
+                            #[nest_struct]
                             #(#root_attrs)*
                             #root_vis struct #struct_ident_maybe_numbered #generic #group
                         });
