@@ -32,6 +32,31 @@
 //! assert_eq!(api_response.abilities.first().unwrap().ability.name, "limber");
 //! ```
 //!
+//! The expanded code for the struct above would look like this:
+//!
+//! ```rust
+//! #[derive(serde::Deserialize)]
+//! struct APIResponse_Abilities_Ability {
+//!     name: String,
+//!     url: String,
+//! }
+//! #[derive(serde::Deserialize)]
+//! struct APIResponse_Abilities {
+//!     ability: APIResponse_Abilities_Ability,
+//!     is_hidden: bool,
+//!     slot: u32,
+//! }
+//!
+//! #[derive(serde::Deserialize)]
+//! struct APIResponse {
+//!     id: u32,
+//!     name: String,
+//!     abilities: Vec<APIResponse_Abilities>,
+//! }
+//! ```
+//!
+//! for more examples, see the `tests/cases` directory.
+//!
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
