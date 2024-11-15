@@ -3,7 +3,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct Level3NestedStruct {
+struct Level3NestedStructWithGeneric<AGE> {
     id: u32,
     name: nest! {
         first: String,
@@ -12,7 +12,8 @@ struct Level3NestedStruct {
         father: nest! {
             first: String,
             last: String,
-            grand_father: nest! {
+            grand_father: nest_with_generic! {
+                age: AGE,
                 first: String,
                 last: String,
             },
