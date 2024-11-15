@@ -67,7 +67,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         let struct_name_maybe_numbered = format!(
                             "{}_{}{}",
                             root_struct_name,
-                            field_name.to_case(Case::Pascal),
+                            field_name.replace("r#", "").to_case(Case::Pascal),
                             struct_name_index
                         );
                         let struct_ident_maybe_numbered = syn::Ident::new(

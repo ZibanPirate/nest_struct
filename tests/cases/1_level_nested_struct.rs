@@ -5,9 +5,8 @@ extern crate nest_struct;
 #[nest_struct]
 struct Level1NestedStruct {
     id: u32,
-    name: nest! {
-        first: String,
-        last: String,
-        middle: Option<String>,
+    r#type: nest! {
+        value: String,
+        group: String,
     },
 }

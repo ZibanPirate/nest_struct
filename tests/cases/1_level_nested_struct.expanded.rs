@@ -2,13 +2,12 @@
 #[macro_use]
 extern crate nest_struct;
 #[allow(non_camel_case_types)]
-struct Level1NestedStruct_Name {
-    first: String,
-    last: String,
-    middle: Option<String>,
+struct Level1NestedStruct_Type {
+    value: String,
+    group: String,
 }
 #[allow(non_camel_case_types)]
 struct Level1NestedStruct {
     id: u32,
-    name: Level1NestedStruct_Name,
+    r#type: Level1NestedStruct_Type,
 }
