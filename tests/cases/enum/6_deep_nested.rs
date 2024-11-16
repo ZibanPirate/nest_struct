@@ -13,8 +13,10 @@ enum DeepNested<AGE, 'a> {
     None,
     // only one generic item is used: 'a
     NestedEnum(
+        // @TODO-ZM: this is broken
         nest! {
             First,
+            // @TODO-ZM: this is broken
             Last (nest! {
                 // generic are only used in the last nest
                 first: &'a str,

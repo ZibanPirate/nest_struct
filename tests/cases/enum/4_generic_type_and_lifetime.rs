@@ -12,6 +12,7 @@ enum Generic<ID, 'a> {
     None,
     // only one generic item is used: 'a
     NestedEnum(
+        // @TODO-ZM: this is broken
         nest! {
             First,
             Last,
@@ -20,6 +21,7 @@ enum Generic<ID, 'a> {
     ),
     // all generic items are used: 'a, ID
     NestedStruct(
+        // @TODO-ZM: this is broken
         nest! {
             first: &'a str,
             last: &'a str,

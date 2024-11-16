@@ -16,6 +16,10 @@ enum Nested {
             Last,
         },
         u32,
+        nest! {
+            Second,
+            Third,
+        },
     ),
     NestedStruct(
         nest! {

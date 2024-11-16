@@ -4,7 +4,7 @@
 
 Nest struct definitions with minimal syntax changes in Rust
 
-Example
+### Example
 
 ```rust
 use nest_struct::nest_struct;
@@ -58,7 +58,22 @@ struct APIResponse {
 }
 ```
 
-for more examples, see the `tests/cases` directory.
+For more examples, see the [`./tests/cases`](https://github.com/ZibanPirate/nest_struct/tree/main/tests/cases) directory.
+
+### Features
+
+- [x] deep nesting (no theoretical limit).
+- [x] nest `struct` inside another `struct`.
+- [x] nest `enum` inside another `enum`.
+- [x] nest `enum` inside a `struct` and vice-versa.
+
+Feature parity with native Rust code:
+
+- [x] `impl` block on inner `struct`s.
+- [x] inherit `derive` and other attribute macros from root `struct`.
+- [ ] define `derive` and other attribute macros individually per inner `struct`.
+- [x] support generic types.
+- [x] support lifetimes.
 
 
 License: MIT
