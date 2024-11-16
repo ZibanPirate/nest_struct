@@ -14,7 +14,6 @@ struct Nested {
         value: String,
         group: String,
     },
-    // @TODO-ZM: this is broken
     nested_enum: nest! {
         First,
         Last,

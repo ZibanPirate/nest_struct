@@ -12,7 +12,6 @@ enum AttributeMacro {
     Unnamed(u32, u32),
     None,
     NestedEnum(
-        // @TODO-ZM: this is broken
         nest! {
             First,
             Last,
@@ -20,7 +19,6 @@ enum AttributeMacro {
         u32,
     ),
     NestedStruct(
-        // @TODO-ZM: this is broken
         nest! {
             first: String,
             last: String,
