@@ -12,7 +12,7 @@ struct Level3NestedStructWithGeneric<AGE> {
         father: nest! {
             first: String,
             last: String,
-            grand_father: nest_with_generic! {
+            grand_father: nest! {
                 age: AGE,
                 first: String,
                 last: String,

@@ -58,11 +58,39 @@
 //!
 //! for more examples, see the `tests/cases` directory.
 //!
+
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{quote, ToTokens};
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Type};
+
+fn find_idents_in_token_tree_and_exit_early(
+    token_stream: proc_macro2::TokenStream,
+    ident_names: &Vec<String>,
+) -> Vec<String> {
+    let mut idents: Vec<String> = vec![];
+
+    token_stream.into_iter().for_each(|token| match token {
+        TokenTree::Ident(ident) => {
+            if ident_names.contains(&ident.to_string()) {
+                idents.push(ident.to_string());
+            }
+        }
+        TokenTree::Group(group) => {
+            idents.extend(find_idents_in_token_tree_and_exit_early(
+                group.stream(),
+                ident_names,
+            ));
+        }
+        _ => {}
+    });
+
+    idents.dedup();
+
+    // @TODO-ZM: preserve order of found idents
+    idents
+}
 
 /// Nest struct definitions with minimal syntax changes.
 #[proc_macro_attribute]
@@ -75,6 +103,17 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let root_vis = &input.vis;
     let root_attrs = input.attrs;
     let root_generics = input.generics;
+    // @TODO-ZM: should we preserve order of generics?
+    // get only the generic names without the extra info, eg 'a will be just a
+    let root_generic_names = root_generics
+        .clone()
+        .into_token_stream()
+        .into_iter()
+        .filter_map(|token| match token {
+            TokenTree::Ident(ident) => Some(ident.to_string()),
+            _ => None,
+        })
+        .collect::<Vec<String>>();
 
     let root_struct_body = match input.data {
         Data::Struct(data) => data,
@@ -117,9 +156,30 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     Some(TokenTree::Punct(punct)),
                     Some(TokenTree::Group(group)),
                 ) => {
-                    if (ident.to_string() == "nest" || ident.to_string() == "nest_with_generic")
-                        && punct.as_char() == '!'
-                    {
+                    if (ident.to_string() == "nest") && punct.as_char() == '!' {
+                        let found_ident_names_for_generics =
+                            find_idents_in_token_tree_and_exit_early(
+                                group.stream(),
+                                &root_generic_names,
+                            );
+
+                        // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
+                        // that are used in the nested struct, identified by their names
+                        let mut struct_generic = root_generics.clone();
+                        struct_generic.params = struct_generic
+                            .params
+                            .into_iter()
+                            .filter(|param| {
+                                param.into_token_stream().to_token_stream().into_iter().any(
+                                    |token| match token {
+                                        TokenTree::Ident(ident) => found_ident_names_for_generics
+                                            .contains(&ident.to_string()),
+                                        _ => false,
+                                    },
+                                )
+                            })
+                            .collect();
+
                         let struct_name_index = match indices_to_replace.len() {
                             0 => "",
                             n => &n.to_string(),
@@ -134,12 +194,8 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                             &struct_name_maybe_numbered,
                             proc_macro2::Span::call_site(),
                         );
-                        // @TODO-ZM: cherry pick what generics to inherit
-                        let nest_macro_name = ident.to_string();
-                        let generic = match nest_macro_name.as_str() {
-                            "nest_with_generic" => quote! { #root_generics },
-                            _ => quote! {},
-                        };
+
+                        let generic = quote! { #struct_generic };
 
                         let struct_name_maybe_numbered_maybe_with_generic = syn::parse_str::<Type>(
                             &format!("{}{}", struct_name_maybe_numbered, generic),

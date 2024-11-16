@@ -16,17 +16,18 @@ pub struct NonNestedStruct<ID> {
             first: String,
             last: String,
             grand_father: nest! {
+                ids: Vec<ID>,
                 first: String,
                 last: String,
             },
         },
     },
-    parent: nest_with_generic! {
+    parent: nest! {
         id: ID,
         age: u32,
     },
     past_names_with_generic: Vec<
-        nest_with_generic! {
+        nest! {
             id: ID,
             first: String,
             last: String,
