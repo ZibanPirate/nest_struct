@@ -3,7 +3,8 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct Level3NestedStructWithGeneric<AGE> {
+#[derive(Debug)]
+struct DeepNestedWithGeneric<AGE, 'a> {
     id: u32,
     name: nest! {
         first: String,
@@ -12,10 +13,11 @@ struct Level3NestedStructWithGeneric<AGE> {
         father: nest! {
             first: String,
             last: String,
+            // generic are only used in the last nest
             grand_father: nest! {
                 age: AGE,
-                first: String,
-                last: String,
+                first: &'a str,
+                last: &'a str,
             },
         },
     },

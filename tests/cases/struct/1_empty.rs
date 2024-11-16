@@ -3,4 +3,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct EmptyStruct;
+struct Empty;
+
+#[nest_struct]
+struct EmptyBraces {}
