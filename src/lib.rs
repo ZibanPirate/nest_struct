@@ -63,7 +63,10 @@ use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{quote, ToTokens};
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Type};
+use syn::{
+    parse_macro_input, punctuated::Punctuated, token::Comma, Data, DeriveInput, Field, Fields,
+    Generics, Type,
+};
 
 fn find_idents_in_token_tree_and_exit_early(
     token_stream: proc_macro2::TokenStream,
@@ -105,21 +108,9 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
 
     let root_struct_ident = &input.ident;
-    let root_struct_name = root_struct_ident.to_string();
     let root_vis = &input.vis;
     let root_attrs = input.attrs;
     let root_generics = input.generics;
-    // @TODO-ZM: should we preserve order of generics?
-    // get only the generic names without the extra info, eg 'a will be just a
-    let root_generic_names = root_generics
-        .clone()
-        .into_token_stream()
-        .into_iter()
-        .filter_map(|token| match token {
-            TokenTree::Ident(ident) => Some(ident.to_string()),
-            _ => None,
-        })
-        .collect::<Vec<String>>();
 
     let root_struct_body = match input.data {
         Data::Struct(data) => data,
@@ -132,10 +123,53 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => return original_item,
     };
 
+    let (additional_structs, new_root_fields) = match convert_nest_to_structs(
+        root_fields,
+        root_struct_ident,
+        &root_generics,
+        root_vis,
+        &root_attrs,
+    ) {
+        Ok(tuple) => tuple,
+        Err(_) => return original_item,
+    };
+
+    let expanded = quote! {
+        #(#additional_structs)*
+
+        #(#root_attrs)*
+        #root_vis struct #root_struct_ident #root_generics {
+            #(#new_root_fields),*
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+fn convert_nest_to_structs(
+    fields: Punctuated<Field, Comma>,
+    root_struct_ident: &syn::Ident,
+    root_generics: &Generics,
+    root_vis: &syn::Visibility,
+    root_attrs: &Vec<syn::Attribute>,
+) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), ()> {
+    let root_struct_name = root_struct_ident.to_string();
+    // @TODO-ZM: should we preserve order of generics?
+    // get only the generic names without the extra info, eg 'a will be just a
+    let root_generic_names = root_generics
+        .clone()
+        .into_token_stream()
+        .into_iter()
+        .filter_map(|token| match token {
+            TokenTree::Ident(ident) => Some(ident.to_string()),
+            _ => None,
+        })
+        .collect::<Vec<String>>();
+
     let mut new_root_fields: Vec<syn::Field> = Vec::new();
     let mut additional_structs: Vec<proc_macro2::TokenStream> = vec![];
 
-    for mut field in root_fields {
+    for mut field in fields {
         let field_name = field.ident.clone().unwrap().to_string();
         let mut token_tree = field
             .ty
@@ -172,12 +206,8 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                                 ) {
                                     Ok(_) => BodyType::Enum,
                                     // in case of error, we print struct error not enum error
-                                    // using parse_macro_input! to get better error message
-                                    Err(_) => {
-                                        let tokens = quote! { struct Foo #group }.into();
-                                        parse_macro_input!(tokens as DeriveInput);
-                                        break;
-                                    }
+                                    // @TODO-ZM: return parsing error
+                                    Err(_) => return Err(()),
                                 },
                             };
 
@@ -271,14 +301,5 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         new_root_fields.push(field);
     }
 
-    let expanded = quote! {
-        #(#additional_structs)*
-
-        #(#root_attrs)*
-        #root_vis struct #root_struct_ident #root_generics {
-            #(#new_root_fields),*
-        }
-    };
-
-    TokenStream::from(expanded)
+    Ok((additional_structs, new_root_fields))
 }
