@@ -2,7 +2,7 @@
 
 # nest_struct
 
-Nest struct definitions with minimal syntax changes in Rust
+Nest struct and enum definitions with minimal syntax changes in Rust
 
 ### Example
 

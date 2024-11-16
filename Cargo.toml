@@ -1,11 +1,11 @@
 [package]
 name = "nest_struct"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
-description = "Nest struct definitions with minimal syntax changes"
+description = "Nest struct and enum definitions with minimal syntax changes"
 license = "MIT"
 repository = "https://github.com/ZibanPirate/nest_struct"
-keywords = ["nest", "struct", "macro"]
+keywords = ["nest", "struct", "enum", "macro"]
 categories = [
     "data-structures",
     "development-tools",

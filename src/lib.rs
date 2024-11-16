@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
 
-//! Nest struct definitions with minimal syntax changes in Rust
+//! Nest struct and enum definitions with minimal syntax changes in Rust
 //!
 //! ## Example
 //!
@@ -117,6 +117,17 @@ enum BodyType {
 }
 
 /// Nest struct definitions with minimal syntax changes.
+/// eg:
+/// ```rust
+/// use nest_struct::nest_struct;
+/// use serde::Deserialize;
+///
+/// #[nest_struct]
+/// #[derive(Deserialize)]
+/// pub struct AIResponse {
+///   choices: Vec<nest! { message: nest!{ content: String } }>,
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_item = item.clone();
