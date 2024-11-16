@@ -4,17 +4,15 @@ extern crate nest_struct;
 
 #[nest_struct]
 #[derive(Debug)]
-struct Generic<ID, 'a> {
-    id: ID,
-    // all generic items are used: 'a, ID
+struct AttributeMacro {
+    id: u32,
     name: nest! {
-        first: &'a str,
-        last: &'a str,
-        middle: Option<&'a str>,
-        family_name_count: ID,
+        first: String,
+        last: String,
     },
-    // only one generic item is used: 'a
-    family: nest! {
-        roots: Vec<&'a str>,
+    // escaped `type` keyword
+    r#type: nest! {
+        value: String,
+        group: String,
     },
 }

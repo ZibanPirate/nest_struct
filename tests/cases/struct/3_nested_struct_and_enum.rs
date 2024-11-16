@@ -14,4 +14,8 @@ struct Nested {
         value: String,
         group: String,
     },
+    nested_enum: nest! {
+        First,
+        Last,
+    },
 }
