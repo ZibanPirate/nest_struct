@@ -92,6 +92,12 @@ fn find_idents_in_token_tree_and_exit_early(
     idents
 }
 
+#[derive(Debug)]
+enum BodyType {
+    Struct,
+    Enum,
+}
+
 /// Nest struct definitions with minimal syntax changes.
 #[proc_macro_attribute]
 pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -117,6 +123,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let root_struct_body = match input.data {
         Data::Struct(data) => data,
+        // @TODO-ZM: #[nest_struct] for handle enum
         _ => return original_item,
     };
 
@@ -157,6 +164,28 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     Some(TokenTree::Group(group)),
                 ) => {
                     if (ident.to_string() == "nest") && punct.as_char() == '!' {
+                        let body_type =
+                            match syn::parse2::<DeriveInput>(quote! { struct Foo #group }.into()) {
+                                Ok(_) => BodyType::Struct,
+                                Err(_) => match syn::parse2::<DeriveInput>(
+                                    quote! { enum Foo #group }.into(),
+                                ) {
+                                    Ok(_) => BodyType::Enum,
+                                    // in case of error, we print struct error not enum error
+                                    // using parse_macro_input! to get better error message
+                                    Err(_) => {
+                                        let tokens = quote! { struct Foo #group }.into();
+                                        parse_macro_input!(tokens as DeriveInput);
+                                        break;
+                                    }
+                                },
+                            };
+
+                        let body_type_syn = match body_type {
+                            BodyType::Struct => quote! { struct },
+                            BodyType::Enum => quote! { enum },
+                        };
+
                         let found_ident_names_for_generics =
                             find_idents_in_token_tree_and_exit_early(
                                 group.stream(),
@@ -215,7 +244,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         additional_structs.push(quote! {
                             #[nest_struct]
                             #(#root_attrs)*
-                            #root_vis struct #struct_ident_maybe_numbered #generic #group
+                            #root_vis #body_type_syn #struct_ident_maybe_numbered #generic #group
                         });
 
                         index += 2;
