@@ -6,55 +6,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-pub struct NonNestedStruct<ID> {
-    id: ID,
-    name: nest! {
-        first: String,
-        last: String,
-        middle: Option<String>,
-        father: nest! {
-            first: String,
-            last: String,
-            grand_father: nest! {
-                ids: Vec<ID>,
-                first: String,
-                last: String,
-            },
-        },
-    },
-    parent: nest! {
-        id: ID,
-        age: u32,
-    },
-    past_names_with_generic: Vec<
-        nest! {
-            id: ID,
-            first: String,
-            last: String,
-            middle: Option<String>,
-        },
-    >,
-    past_names: Vec<
-        nest! {
-            id: u32,
-            first: String,
-            last: String,
-            middle: Option<String>,
-        },
-    >,
-    status: Either<
-        nest! {
-            alive: bool,
-            age: u8,
-        },
-        nest! {
-            cause_of_death: String,
-            date_of_death: String,
-        },
-    >,
-}
+enum Enum {}
 
-enum Either<L, R> {
-    Left(L),
-    Right(R),
-}
+#[nest_struct]
+struct Struct {}

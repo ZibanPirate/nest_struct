@@ -65,7 +65,7 @@ use proc_macro2::TokenTree;
 use quote::{quote, ToTokens};
 use syn::{
     parse_macro_input, punctuated::Punctuated, token::Comma, Data, DeriveInput, Field, Fields,
-    FieldsNamed, Generics, Type,
+    FieldsNamed, FieldsUnnamed, Generics, Type,
 };
 
 fn find_idents_in_token_tree_and_exit_early(
@@ -148,8 +148,9 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
             let mut new_enum_variants = vec![];
 
             for mut variant in root_enum_variants {
-                let (brace_token, variant_fields) = match variant.clone().fields {
-                    Fields::Named(fields) => (fields.brace_token, fields.named),
+                let variant_fields = match variant.clone().fields {
+                    Fields::Named(fields) => fields.named,
+                    Fields::Unnamed(fields) => fields.unnamed,
                     _ => {
                         new_enum_variants.push(variant);
                         continue;
@@ -169,10 +170,19 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         Err(_) => return original_item,
                     };
 
-                variant.fields = Fields::Named(FieldsNamed {
-                    brace_token,
-                    named: Punctuated::from_iter(new_variant_fields),
-                });
+                variant.fields = match variant.fields {
+                    Fields::Named(fields_named) => Fields::Named(FieldsNamed {
+                        brace_token: fields_named.brace_token,
+                        named: Punctuated::from_iter(new_variant_fields),
+                    }),
+                    Fields::Unnamed(fields_unnamed) => Fields::Unnamed(FieldsUnnamed {
+                        paren_token: fields_unnamed.paren_token,
+                        unnamed: Punctuated::from_iter(new_variant_fields),
+                    }),
+                    _ => {
+                        panic!("Should not reach here");
+                    }
+                };
 
                 additional_structs.extend(additional_structs_for_variant);
                 new_enum_variants.push(variant);
@@ -222,8 +232,21 @@ fn convert_nest_to_structs(
     let mut new_root_fields: Vec<syn::Field> = Vec::new();
     let mut additional_structs: Vec<proc_macro2::TokenStream> = vec![];
 
+    let mut field_name_index = 0;
     for mut field in fields {
-        let field_name = field.ident.clone().unwrap().to_string();
+        let field_name = match field.ident {
+            Some(ref ident) => ident.to_string(),
+            None => {
+                let name = match field_name_index {
+                    0 => "".to_string(),
+                    index => format!("{}", index),
+                }
+                .to_string();
+                field_name_index += 1;
+                name
+            }
+        };
+
         let mut token_tree = field
             .ty
             .clone()
