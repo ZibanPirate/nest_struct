@@ -74,6 +74,8 @@ Feature parity with native Rust code:
 - [x] `impl` block on inner `struct`s.
 - [x] inherit `derive` and other attribute macros from root `struct`.
 - [ ] define `derive` and other attribute macros individually per inner `struct`.
+- [ ] define doc comments individually per inner `struct`.
+- [ ] useful complier error messages.
 - [x] support generic types.
 - [x] support lifetimes.
 
