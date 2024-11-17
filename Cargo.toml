@@ -2,9 +2,11 @@
 name = "nest_struct"
 version = "0.3.1"
 edition = "2021"
+authors = ["ZibanPirate <zakman.dev@gmail.com>"]
 description = "Nest struct and enum definitions with minimal syntax changes"
 license = "MIT"
 repository = "https://github.com/ZibanPirate/nest_struct"
+readme = "README.md"
 keywords = ["nest", "struct", "enum", "macro"]
 categories = [
     "data-structures",
@@ -31,3 +33,4 @@ path = "src/lib.rs"
 
 [badges]
 maintenance = { status = "actively-developed" }
+github = { repository = "ZibanPirate/nest_struct" }
