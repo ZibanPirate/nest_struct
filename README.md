@@ -78,4 +78,10 @@ Feature parity with native Rust code:
 - [x] support lifetimes.
 
 
-License: MIT
+## Contributing
+
+Contributions are welcome, please read [`CONTRIBUTING.md`](https://github.com/ZibanPirate/nest_struct/blob/main/CONTRIBUTING.md) to get started.
+
+## License
+
+Licensed under MIT (twitter: [@zibanpirate](https://twitter.com/zibanpirate)).

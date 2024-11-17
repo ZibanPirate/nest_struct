@@ -5,4 +5,10 @@
 
 {{readme}}
 
-License: {{license}}
+## Contributing
+
+Contributions are welcome, please read [`CONTRIBUTING.md`](https://github.com/ZibanPirate/nest_struct/blob/main/CONTRIBUTING.md) to get started.
+
+## License
+
+Licensed under {{license}} (twitter: [@zibanpirate](https://twitter.com/zibanpirate)).
