@@ -1,5 +1,5 @@
 [jobs.expand]
-command = ["cargo", "expand", "--color", "always", "--test", "develop"]
+command = ["cargo", "expand", "--color", "always", "--test", "playground"]
 watch = ["src"]
 need_stdout = true
 
