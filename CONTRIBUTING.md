@@ -12,7 +12,7 @@ then run code expansion in watch mode:
 bacon expand
 ```
 
-and start hacking inside `tests/develop.rs`.
+and start hacking inside `tests/playground.rs`.
 
 # Run tests:
 
