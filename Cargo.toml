@@ -33,4 +33,3 @@ path = "src/lib.rs"
 
 [badges]
 maintenance = { status = "actively-developed" }
-github = { repository = "ZibanPirate/nest_struct" }

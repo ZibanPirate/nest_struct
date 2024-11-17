@@ -1,5 +1,5 @@
 [![Crates.io](https://img.shields.io/crates/v/nest_struct.svg)](https://crates.io/crates/nest_struct)
-[![Workflow Status](https://github.com/ZibanPirate/nest_struct/workflows/main/badge.svg)](https://github.com/ZibanPirate/nest_struct/actions?query=workflow%3A%22main%22)
+[![CI](https://github.com/ZibanPirate/nest_struct/actions/workflows/ci.yml/badge.svg)](https://github.com/ZibanPirate/nest_struct/actions/workflows/ci.yml)
 ![Maintenance](https://img.shields.io/badge/maintenance-activly--developed-brightgreen.svg)
 
 # nest_struct

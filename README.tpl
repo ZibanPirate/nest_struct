@@ -1,4 +1,5 @@
 [![Crates.io](https://img.shields.io/crates/v/nest_struct.svg)](https://crates.io/crates/nest_struct)
+[![CI](https://github.com/ZibanPirate/nest_struct/actions/workflows/ci.yml/badge.svg)](https://github.com/ZibanPirate/nest_struct/actions/workflows/ci.yml)
 {{badges}}
 
 # {{crate}}
