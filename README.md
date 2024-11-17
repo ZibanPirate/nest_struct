@@ -64,21 +64,20 @@ For more examples, see the [`./tests/cases`](https://github.com/ZibanPirate/nest
 
 ### Features
 
-- [x] deep nesting (no theoretical limit).
-- [x] nest `struct` inside another `struct`.
-- [x] nest `enum` inside another `enum`.
-- [x] nest `enum` inside a `struct` and vice-versa.
+-   [x] deep nesting (no theoretical limit).
+-   [x] nest `struct` inside another `struct`.
+-   [x] nest `enum` inside another `enum`.
+-   [x] nest `enum` inside a `struct` and vice-versa.
 
 Feature parity with native Rust code:
 
-- [x] `impl` block on inner `struct`s.
-- [x] inherit `derive` and other attribute macros from root `struct`.
-- [ ] define `derive` and other attribute macros individually per inner `struct`.
-- [ ] define doc comments individually per inner `struct`.
-- [ ] useful complier error messages.
-- [x] support generic types.
-- [x] support lifetimes.
-
+-   [x] `impl` block on inner `struct`s.
+-   [x] inherit `derive` and other attribute macros from root `struct`.
+-   [ ] define `derive` and other attribute macros individually per inner `struct`.
+-   [ ] define doc comments individually per inner `struct`.
+-   [ ] useful complier error messages.
+-   [x] support generic types.
+-   [x] support lifetimes.
 
 ## Contributing
 
