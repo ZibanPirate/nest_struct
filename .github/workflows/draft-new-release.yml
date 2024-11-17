@@ -9,7 +9,7 @@ on:
 
 jobs:
   apply-version:
-    name: cargo bump
+    name: "Apply Version"
     runs-on: ubuntu-latest
     permissions:
         contents: write
