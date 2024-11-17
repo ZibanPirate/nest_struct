@@ -3,7 +3,7 @@
 install `bacon`:
 
 ```sh
-cargo install --locked bacon             
+cargo install --locked bacon
 ```
 
 then run code expansion in watch mode:
