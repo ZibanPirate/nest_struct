@@ -1,3 +1,5 @@
+[![Crates.io](https://img.shields.io/crates/v/nest_struct.svg)](https://crates.io/crates/nest_struct)
+[![Workflow Status](https://github.com/ZibanPirate/nest_struct/workflows/main/badge.svg)](https://github.com/ZibanPirate/nest_struct/actions?query=workflow%3A%22main%22)
 ![Maintenance](https://img.shields.io/badge/maintenance-activly--developed-brightgreen.svg)
 
 # nest_struct
@@ -72,8 +74,16 @@ Feature parity with native Rust code:
 - [x] `impl` block on inner `struct`s.
 - [x] inherit `derive` and other attribute macros from root `struct`.
 - [ ] define `derive` and other attribute macros individually per inner `struct`.
+- [ ] define doc comments individually per inner `struct`.
+- [ ] useful complier error messages.
 - [x] support generic types.
 - [x] support lifetimes.
 
 
-License: MIT
+## Contributing
+
+Contributions are welcome, please read [`CONTRIBUTING.md`](https://github.com/ZibanPirate/nest_struct/blob/main/CONTRIBUTING.md) to get started.
+
+## License
+
+Licensed under MIT (twitter: [@zibanpirate](https://twitter.com/zibanpirate)).
