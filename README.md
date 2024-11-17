@@ -19,14 +19,12 @@ struct APIResponse {
     id: u32,
     name: String,
     abilities: Vec<nest! {
-        ability: nest! {
-            name: String,
-            url: String,
+            ability: nest! { name: String, url: String },
+            is_hidden: bool,
+            slot: u32,
         },
-        is_hidden: bool,
-        slot: u32,
-    }>
-};
+    >,
+}
 
 let body = reqwest::blocking::get("https://pokeapi.co/api/v2/pokemon/ditto").unwrap().text().unwrap();
 let api_response: APIResponse = serde_json::from_str(&body).unwrap();
@@ -36,7 +34,8 @@ assert_eq!(api_response.name, "ditto");
 assert_eq!(api_response.abilities.first().unwrap().ability.name, "limber");
 ```
 
-The expanded code for the struct above would look like this:
+<details>
+  <summary>See expanded code</summary>
 
 ```rust
 #[derive(serde::Deserialize)]
@@ -60,6 +59,56 @@ struct APIResponse {
 }
 ```
 
+</details>
+<br>
+
+Or, you can overwrite inner struct names:
+
+```rust
+use nest_struct::nest_struct;
+
+#[nest_struct]
+#[derive(serde::Deserialize)]
+struct APIResponse {
+    id: u32,
+    name: String,
+    abilities: Vec<Ability! {
+            ability: AbilityDetail! { name: String, url: String },
+            is_hidden: bool,
+            slot: u32,
+        },
+    >,
+}
+```
+
+<details>
+ <summary>See expanded code</summary>
+
+```rust
+#[derive(serde::Deserialize)]
+struct AbilityDetail {
+    name: String,
+    url: String,
+}
+
+#[derive(serde::Deserialize)]
+struct Ability {
+    ability: AbilityDetail,
+    is_hidden: bool,
+    slot: u32,
+}
+
+#[derive(serde::Deserialize)]
+struct APIResponse {
+    id: u32,
+    name: String,
+    abilities: Vec<Ability>,
+}
+```
+
+</details>
+<br>
+
 For more examples, see the [`./tests/cases`](https://github.com/ZibanPirate/nest_struct/tree/main/tests/cases) directory.
 
 ### Features
@@ -70,7 +119,7 @@ For more examples, see the [`./tests/cases`](https://github.com/ZibanPirate/nest
 -   [x] nest `enum` inside a `struct` and vice-versa.
 -   [x] inherit `derive` and other attribute macros from root `struct`.
 -   [x] auto-generate inner `struct` names.
--   [ ] overwrite the auto-generated inner struct name.
+-   [x] overwrite the auto-generated inner struct name.
 
 Feature parity with native Rust code:
 

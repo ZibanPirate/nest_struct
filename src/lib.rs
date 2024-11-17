@@ -15,14 +15,12 @@
 //!     id: u32,
 //!     name: String,
 //!     abilities: Vec<nest! {
-//!         ability: nest! {
-//!             name: String,
-//!             url: String,
+//!             ability: nest! { name: String, url: String },
+//!             is_hidden: bool,
+//!             slot: u32,
 //!         },
-//!         is_hidden: bool,
-//!         slot: u32,
-//!     }>
-//! };
+//!     >,
+//! }
 //!
 //! let body = reqwest::blocking::get("https://pokeapi.co/api/v2/pokemon/ditto").unwrap().text().unwrap();
 //! let api_response: APIResponse = serde_json::from_str(&body).unwrap();
@@ -32,7 +30,8 @@
 //! assert_eq!(api_response.abilities.first().unwrap().ability.name, "limber");
 //! ```
 //!
-//! The expanded code for the struct above would look like this:
+//! <details>
+//!   <summary>See expanded code</summary>
 //!
 //! ```rust
 //! #[derive(serde::Deserialize)]
@@ -56,6 +55,56 @@
 //! }
 //! ```
 //!
+//! </details>
+//! <br>
+//!
+//! Or, you can overwrite inner struct names:
+//!
+//! ```rust
+//! use nest_struct::nest_struct;
+//!
+//! #[nest_struct]
+//! #[derive(serde::Deserialize)]
+//! struct APIResponse {
+//!     id: u32,
+//!     name: String,
+//!     abilities: Vec<Ability! {
+//!             ability: AbilityDetail! { name: String, url: String },
+//!             is_hidden: bool,
+//!             slot: u32,
+//!         },
+//!     >,
+//! }
+//! ```
+//!
+//! <details>
+//!  <summary>See expanded code</summary>
+//!
+//! ```rust
+//! #[derive(serde::Deserialize)]
+//! struct AbilityDetail {
+//!     name: String,
+//!     url: String,
+//! }
+//!
+//! #[derive(serde::Deserialize)]
+//! struct Ability {
+//!     ability: AbilityDetail,
+//!     is_hidden: bool,
+//!     slot: u32,
+//! }
+//!
+//! #[derive(serde::Deserialize)]
+//! struct APIResponse {
+//!     id: u32,
+//!     name: String,
+//!     abilities: Vec<Ability>,
+//! }
+//! ```
+//!
+//! </details>
+//! <br>
+//!
 //! For more examples, see the [`./tests/cases`](https://github.com/ZibanPirate/nest_struct/tree/main/tests/cases) directory.
 //!
 //! ## Features
@@ -66,7 +115,7 @@
 //! -   [x] nest `enum` inside a `struct` and vice-versa.
 //! -   [x] inherit `derive` and other attribute macros from root `struct`.
 //! -   [x] auto-generate inner `struct` names.
-//! -   [ ] overwrite the auto-generated inner struct name.
+//! -   [x] overwrite the auto-generated inner struct name.
 //!
 //! Feature parity with native Rust code:
 //!
@@ -302,7 +351,30 @@ fn convert_nest_to_structs(
                     Some(TokenTree::Punct(punct)),
                     Some(TokenTree::Group(group)),
                 ) => {
-                    if (ident.to_string() == "nest") && punct.as_char() == '!' {
+                    let ident_str = ident.to_string();
+                    if (ident_str == "nest" || ident_str.is_case(Case::Pascal))
+                        && punct.as_char() == '!'
+                    {
+                        let inner_struct_name = match ident_str.is_case(Case::Pascal) {
+                            true => syn::Ident::new(&ident_str, proc_macro2::Span::call_site()),
+                            false => {
+                                let struct_name_index = match indices_to_replace.len() {
+                                    0 => "",
+                                    n => &n.to_string(),
+                                };
+                                let struct_name_maybe_numbered = format!(
+                                    "{}{}{}",
+                                    root_struct_name,
+                                    field_name.replace("r#", "").to_case(Case::Pascal),
+                                    struct_name_index
+                                );
+                                syn::Ident::new(
+                                    &struct_name_maybe_numbered,
+                                    proc_macro2::Span::call_site(),
+                                )
+                            }
+                        };
+
                         let body_type =
                             match syn::parse2::<DeriveInput>(quote! { struct Foo #group }.into()) {
                                 Ok(_) => BodyType::Struct,
@@ -344,33 +416,17 @@ fn convert_nest_to_structs(
                             })
                             .collect();
 
-                        let struct_name_index = match indices_to_replace.len() {
-                            0 => "",
-                            n => &n.to_string(),
-                        };
-                        let struct_name_maybe_numbered = format!(
-                            "{}{}{}",
-                            root_struct_name,
-                            field_name.replace("r#", "").to_case(Case::Pascal),
-                            struct_name_index
-                        );
-                        let struct_ident_maybe_numbered = syn::Ident::new(
-                            &struct_name_maybe_numbered,
-                            proc_macro2::Span::call_site(),
-                        );
-
                         let generic = quote! { #struct_generic };
 
-                        let struct_name_maybe_numbered_maybe_with_generic = syn::parse_str::<Type>(
-                            &format!("{}{}", struct_name_maybe_numbered, generic),
-                        )
-                        .unwrap();
+                        let inner_struct_name_maybe_with_generic =
+                            syn::parse_str::<Type>(&format!("{}{}", inner_struct_name, generic))
+                                .unwrap();
 
                         indices_to_replace.push((
                             index,
                             TokenTree::Group(proc_macro2::Group::new(
                                 proc_macro2::Delimiter::None,
-                                struct_name_maybe_numbered_maybe_with_generic.into_token_stream(),
+                                inner_struct_name_maybe_with_generic.into_token_stream(),
                             )),
                         ));
                         indices_to_remove.push(index + 1);
@@ -379,7 +435,7 @@ fn convert_nest_to_structs(
                         additional_structs.push(quote! {
                             #[nest_struct]
                             #(#root_attrs)*
-                            #root_vis #body_type_syn #struct_ident_maybe_numbered #generic #group
+                            #root_vis #body_type_syn #inner_struct_name #generic #group
                         });
 
                         index += 2;
