@@ -288,6 +288,11 @@ fn convert_nest_to_structs(
     root_vis: &syn::Visibility,
     root_attrs: &Vec<syn::Attribute>,
 ) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), ()> {
+    let root_attrs = root_attrs
+        .iter()
+        .filter(|attr| !attr.path().is_ident("doc"))
+        .collect::<Vec<&syn::Attribute>>();
+
     let root_struct_name = format!(
         "{}{}",
         root_struct_ident,
