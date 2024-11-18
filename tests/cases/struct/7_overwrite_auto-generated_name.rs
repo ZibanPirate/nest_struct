@@ -16,5 +16,3 @@ struct Config<P, 'a> {
     // now we reuse the auto-generated name
     backup_server: ConfigServer<'a, P>,
 }
-
-fn main() {}

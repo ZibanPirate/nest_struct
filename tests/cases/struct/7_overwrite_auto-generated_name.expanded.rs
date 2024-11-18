@@ -13,4 +13,3 @@ struct Config<'a, P> {
     main_server: ConfigServer<'a, P>,
     backup_server: ConfigServer<'a, P>,
 }
-fn main() {}

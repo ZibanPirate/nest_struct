@@ -11,6 +11,77 @@ Nest struct and enum definitions with minimal syntax changes in Rust
 ```rust
 use nest_struct::nest_struct;
 
+#[nest_struct]
+struct Post {
+    title: String,
+    summary: String,
+    author: nest! {
+        name: String,
+        handle: String,
+    },
+}
+```
+
+<details>
+  <summary>See expanded code</summary>
+
+```rust
+struct Post {
+    title: String,
+    summary: String,
+    author: PostAuthor,
+}
+
+struct PostAuthor {
+    name: String,
+    handle: String,
+}
+```
+
+</details>
+<br>
+
+You can also overwrite inner struct name, by passing the name itself as macro instead of `nest!`:
+
+```rust
+use nest_struct::nest_struct;
+
+#[nest_struct]
+struct Post {
+    title: String,
+    summary: String,
+    author: Author! {
+        name: String,
+        handle: String,
+    },
+}
+```
+
+<details>
+ <summary>See expanded code</summary>
+
+```rust
+struct Post {
+    title: String,
+    summary: String,
+    author: Author,
+}
+
+struct Author {
+    name: String,
+    handle: String,
+}
+```
+
+</details>
+<br>
+
+<details>
+ <summary>Another example calling Pokemon API</summary>
+
+```rust
+use nest_struct::nest_struct;
+
 // Define a struct with nested struct definitions all in one place
 // with minimal syntax changes.
 #[nest_struct]
@@ -34,78 +105,6 @@ assert_eq!(api_response.name, "ditto");
 assert_eq!(api_response.abilities.first().unwrap().ability.name, "limber");
 ```
 
-<details>
-  <summary>See expanded code</summary>
-
-```rust
-#[derive(serde::Deserialize)]
-struct APIResponseAbilitiesAbility {
-    name: String,
-    url: String,
-}
-
-#[derive(serde::Deserialize)]
-struct APIResponseAbilities {
-    ability: APIResponseAbilitiesAbility,
-    is_hidden: bool,
-    slot: u32,
-}
-
-#[derive(serde::Deserialize)]
-struct APIResponse {
-    id: u32,
-    name: String,
-    abilities: Vec<APIResponseAbilities>,
-}
-```
-
-</details>
-<br>
-
-Or, you can overwrite inner struct names:
-
-```rust
-use nest_struct::nest_struct;
-
-#[nest_struct]
-#[derive(serde::Deserialize)]
-struct APIResponse {
-    id: u32,
-    name: String,
-    abilities: Vec<Ability! {
-            ability: AbilityDetail! { name: String, url: String },
-            is_hidden: bool,
-            slot: u32,
-        },
-    >,
-}
-```
-
-<details>
- <summary>See expanded code</summary>
-
-```rust
-#[derive(serde::Deserialize)]
-struct AbilityDetail {
-    name: String,
-    url: String,
-}
-
-#[derive(serde::Deserialize)]
-struct Ability {
-    ability: AbilityDetail,
-    is_hidden: bool,
-    slot: u32,
-}
-
-#[derive(serde::Deserialize)]
-struct APIResponse {
-    id: u32,
-    name: String,
-    abilities: Vec<Ability>,
-}
-```
-
 </details>
 <br>
 
@@ -126,7 +125,7 @@ Feature parity with native Rust code:
 -   [x] `impl` block on inner `struct`s.
 -   [ ] define `derive` and other attribute macros individually per inner `struct`.
 -   [ ] define doc comments individually per inner `struct`.
--   [ ] useful complier error messages.
+-   [ ] useful compiler error messages.
 -   [x] support generic types.
 -   [x] support lifetimes.
 
