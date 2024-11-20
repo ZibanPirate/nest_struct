@@ -386,9 +386,62 @@ fn convert_nest_to_structs(
                                     quote! { enum Foo #group }.into(),
                                 ) {
                                     Ok(_) => BodyType::Enum,
-                                    // in case of error, we print struct error not enum error
-                                    // @TODO-ZM: return parsing error
-                                    Err(_) => return Err(()),
+                                    Err(_) => {
+                                        match syn::parse2::<syn::Block>(group.into_token_stream()) {
+                                            Ok(block) => {
+                                                if block.stmts.len() > 1 {
+                                                    // @TODO-ZM: return parsing error
+                                                    // return Err(());
+                                                }
+                                                let (item, ident, generics) =
+                                                    match block.stmts.first() {
+                                                        Some(statement) => match statement {
+                                                            syn::Stmt::Item(item) => match item {
+                                                                syn::Item::Struct(struct_item) => (
+                                                                    item,
+                                                                    struct_item.ident.clone(),
+                                                                    struct_item.generics.clone(),
+                                                                ),
+                                                                syn::Item::Enum(enum_item) => (
+                                                                    item,
+                                                                    enum_item.ident.clone(),
+                                                                    enum_item.generics.clone(),
+                                                                ),
+                                                                _ => return Err(()),
+                                                            },
+                                                            _ => return Err(()),
+                                                        },
+                                                        None => return Err(()),
+                                                    };
+                                                indices_to_replace.push((
+                                                    index,
+                                                    TokenTree::Group(proc_macro2::Group::new(
+                                                        proc_macro2::Delimiter::None,
+                                                        syn::parse_str::<Type>(&format!(
+                                                            "{}{}",
+                                                            ident,
+                                                            generics.into_token_stream()
+                                                        ))
+                                                        .unwrap()
+                                                        .into_token_stream(),
+                                                    )),
+                                                ));
+                                                indices_to_remove.push(index + 1);
+                                                indices_to_remove.push(index + 2);
+
+                                                additional_structs.push(quote! {
+                                                    #[nest_struct]
+                                                    #item
+                                                });
+
+                                                index += 2;
+                                                continue;
+                                            }
+                                            // in case of error, we print struct error not enum error
+                                            // @TODO-ZM: return parsing error
+                                            Err(_) => return Err(()),
+                                        }
+                                    }
                                 },
                             };
 
