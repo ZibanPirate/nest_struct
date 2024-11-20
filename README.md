@@ -76,6 +76,47 @@ struct Author {
 </details>
 <br>
 
+Or, you can open a block and define struct like normal Rust code for full flexibility:
+
+```rust
+use nest_struct::nest_struct;
+
+#[nest_struct]
+struct Post {
+    title: String,
+    summary: String,
+    author: nest! {
+        /// doc comment for Author struct
+        #[derive(Debug)]
+        struct Author {
+            name: String,
+            handle: String,
+        }
+    },
+}
+```
+
+<details>
+ <summary>See expanded code</summary>
+
+```rust
+struct Post {
+    title: String,
+    summary: String,
+    author: Author,
+}
+
+/// doc comment for Author struct
+#[derive(Debug)]
+struct Author {
+    name: String,
+    handle: String,
+}
+```
+
+</details>
+<br>
+
 <details>
  <summary>Another example calling Pokemon API</summary>
 
@@ -123,8 +164,8 @@ For more examples, see the [`./tests/cases`](https://github.com/ZibanPirate/nest
 Feature parity with native Rust code:
 
 -   [x] `impl` block on inner `struct`s.
--   [ ] define `derive` and other attribute macros individually per inner `struct`.
--   [ ] define doc comments individually per inner `struct`.
+-   [x] define `derive` and other attribute macros individually per inner `struct`.
+-   [x] define doc comments individually per inner `struct`.
 -   [ ] useful compiler error messages.
 -   [x] support generic types.
 -   [x] support lifetimes.
