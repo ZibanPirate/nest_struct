@@ -16,16 +16,19 @@ categories = [
 ]
 
 [dependencies]
-convert_case = "0.6.0"
+convert_case = "0.7"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
 macrotest = "1"
-reqwest = { version = "0.12.9", features = ["blocking"] }
-serde = { version = "1.0.214", features = ["derive"] }
-serde_json = "1.0.132"
+reqwest = { version = "0.12", default-features = false, features = [
+    "blocking",
+    "rustls-tls",
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [lib]
 proc-macro = true
