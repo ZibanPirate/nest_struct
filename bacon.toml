@@ -6,3 +6,10 @@ need_stdout = true
 [jobs.doc]
 command = ["cargo", "doc", "--color", "always", "--no-deps"]
 watch = ["src"]
+
+[jobs.test]
+command = ["cargo", "test", "--color", "always", "--no-fail-fast"]
+watch = ["src", "tests"]
+need_stdout = true
+allow_failures = true
+allow_warnings = true
