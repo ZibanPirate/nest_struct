@@ -246,7 +246,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 &root_attrs,
             ) {
                 Ok(tuple) => tuple,
-                Err(_) => return original_item,
+                Err(error_stream) => return TokenStream::from(error_stream),
             };
 
             let expanded = quote! {
@@ -285,7 +285,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         &root_attrs,
                     ) {
                         Ok(tuple) => tuple,
-                        Err(_) => return original_item,
+                        Err(error_stream) => return TokenStream::from(error_stream),
                     };
 
                 variant.fields = match variant.fields {
@@ -328,7 +328,7 @@ fn convert_nest_to_structs(
     root_generics: &Generics,
     root_vis: &syn::Visibility,
     root_attrs: &Vec<syn::Attribute>,
-) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), ()> {
+) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), proc_macro2::TokenStream> {
     let root_attrs = root_attrs
         .iter()
         .filter(|attr| !attr.path().is_ident("doc"))
@@ -420,40 +420,48 @@ fn convert_nest_to_structs(
                             }
                         };
 
-                        let body_type =
-                            match syn::parse2::<DeriveInput>(quote! { struct Foo #group }.into()) {
-                                Ok(_) => BodyType::Struct,
-                                Err(_) => match syn::parse2::<DeriveInput>(
-                                    quote! { enum Foo #group }.into(),
-                                ) {
+                        let body_type = match syn::parse2::<DeriveInput>(
+                            quote! { struct Foo #group }.into(),
+                        ) {
+                            Ok(_) => BodyType::Struct,
+                            Err(struct_parse_err) => {
+                                match syn::parse2::<DeriveInput>(quote! { enum Foo #group }.into())
+                                {
                                     Ok(_) => BodyType::Enum,
-                                    Err(_) => {
+                                    Err(enum_parse_err) => {
                                         match syn::parse2::<syn::Block>(group.into_token_stream()) {
                                             Ok(block) => {
                                                 if block.stmts.len() > 1 {
-                                                    // @TODO-ZM: return parsing error
-                                                    // return Err(());
+                                                    todo!("error: only one statement is allowed inside nest! block");
                                                 }
-                                                let (item, ident, generics) =
-                                                    match block.stmts.first() {
-                                                        Some(statement) => match statement {
-                                                            syn::Stmt::Item(item) => match item {
-                                                                syn::Item::Struct(struct_item) => (
-                                                                    item,
-                                                                    struct_item.ident.clone(),
-                                                                    struct_item.generics.clone(),
-                                                                ),
-                                                                syn::Item::Enum(enum_item) => (
-                                                                    item,
-                                                                    enum_item.ident.clone(),
-                                                                    enum_item.generics.clone(),
-                                                                ),
-                                                                _ => return Err(()),
-                                                            },
-                                                            _ => return Err(()),
+                                                let (item, ident, generics) = match block
+                                                    .stmts
+                                                    .first()
+                                                {
+                                                    Some(statement) => match statement {
+                                                        syn::Stmt::Item(item) => match item {
+                                                            syn::Item::Struct(struct_item) => (
+                                                                item,
+                                                                struct_item.ident.clone(),
+                                                                struct_item.generics.clone(),
+                                                            ),
+                                                            syn::Item::Enum(enum_item) => (
+                                                                item,
+                                                                enum_item.ident.clone(),
+                                                                enum_item.generics.clone(),
+                                                            ),
+                                                            _ => {
+                                                                todo!("error: only struct and enum are supported inside nest! block");
+                                                            }
                                                         },
-                                                        None => return Err(()),
-                                                    };
+                                                        _ => {
+                                                            todo!("error: only struct and enum are supported inside nest! block");
+                                                        }
+                                                    },
+                                                    None => {
+                                                        todo!("return empty struct instead of error (useful for marker type)");
+                                                    }
+                                                };
                                                 indices_to_replace.push((
                                                     index,
                                                     TokenTree::Group(proc_macro2::Group::new(
@@ -478,13 +486,36 @@ fn convert_nest_to_structs(
                                                 index += 2;
                                                 continue;
                                             }
-                                            // in case of error, we print struct error not enum error
-                                            // @TODO-ZM: return parsing error
-                                            Err(_) => return Err(()),
+                                            Err(block_parse_err) => {
+                                                let mut combined_error = syn::Error::new(
+                                                    struct_parse_err.span(),
+                                                    format!(
+                                                        "if nesting a struct: {}",
+                                                        struct_parse_err
+                                                    ),
+                                                );
+                                                combined_error.combine(syn::Error::new(
+                                                    enum_parse_err.span(),
+                                                    format!(
+                                                        "if nesting an enum: {}",
+                                                        enum_parse_err
+                                                    ),
+                                                ));
+                                                combined_error.combine(syn::Error::new(
+                                                    block_parse_err.span(),
+                                                    format!(
+                                                        "if nesting a block: {}",
+                                                        block_parse_err
+                                                    ),
+                                                ));
+
+                                                return Err(combined_error.to_compile_error());
+                                            }
                                         }
                                     }
-                                },
-                            };
+                                }
+                            }
+                        };
 
                         let body_type_syn = match body_type {
                             BodyType::Struct => quote! { struct },
