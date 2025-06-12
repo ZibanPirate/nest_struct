@@ -175,6 +175,9 @@ use syn::{
     Field, Fields, FieldsNamed, FieldsUnnamed, Generics, Type,
 };
 
+const ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK: &str =
+    "only one statement is allowed inside `nest!` block";
+
 fn find_idents_in_token_tree_and_exit_early(
     token_stream: proc_macro2::TokenStream,
     ident_names: &Vec<String>,
@@ -432,17 +435,15 @@ fn convert_nest_to_structs(
                                         match syn::parse2::<syn::Block>(group.into_token_stream()) {
                                             Ok(block) => {
                                                 if block.stmts.len() > 1 {
-                                                    let err_msg =
-                                                        format!("only one statement is allowed inside `nest!` block");
                                                     let mut combined_error = syn::Error::new(
                                                         block.stmts.iter().nth(1).unwrap().span(),
-                                                        &err_msg,
+                                                        ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK,
                                                     );
 
                                                     block.stmts.iter().skip(1).for_each(|stmt| {
                                                         combined_error.combine(syn::Error::new(
                                                             stmt.span(),
-                                                            &err_msg,
+                                                            ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK,
                                                         ));
                                                     });
 
