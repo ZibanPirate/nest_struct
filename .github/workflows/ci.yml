@@ -8,6 +8,14 @@ on:
     pull_request:
 
 jobs:
+    prettier:
+        name: prettier check
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+            - run: npx -y prettier --check .
+
     docs:
         name: update docs
         runs-on: ubuntu-latest
