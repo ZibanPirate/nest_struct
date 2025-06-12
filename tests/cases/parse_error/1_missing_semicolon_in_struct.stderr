@@ -1,0 +1,17 @@
+error: if nesting a struct: expected `,`
+  --> tests/cases/parse_error/1_missing_semicolon_in_struct.rs:10:9
+   |
+10 |         last: String,
+   |         ^^^^
+
+error: if nesting an enum: expected `,`
+ --> tests/cases/parse_error/1_missing_semicolon_in_struct.rs:9:14
+  |
+9 |         first: String
+  |              ^
+
+error: if nesting a block: unexpected token, expected `;`
+ --> tests/cases/parse_error/1_missing_semicolon_in_struct.rs:9:14
+  |
+9 |         first: String
+  |              ^

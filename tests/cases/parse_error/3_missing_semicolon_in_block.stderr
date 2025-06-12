@@ -1,0 +1,17 @@
+error: if nesting a struct: expected identifier, found keyword `enum`
+ --> tests/cases/parse_error/3_missing_semicolon_in_block.rs:9:9
+  |
+9 |         enum NestedEnum {
+  |         ^^^^
+
+error: if nesting an enum: expected identifier, found keyword `enum`
+ --> tests/cases/parse_error/3_missing_semicolon_in_block.rs:9:9
+  |
+9 |         enum NestedEnum {
+  |         ^^^^
+
+error: if nesting a block: expected `,`
+  --> tests/cases/parse_error/3_missing_semicolon_in_block.rs:11:13
+   |
+11 |             Last,
+   |             ^^^^

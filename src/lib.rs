@@ -171,9 +171,14 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{quote, ToTokens};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, token::Comma, Data, DeriveInput, Field, Fields,
-    FieldsNamed, FieldsUnnamed, Generics, Type,
+    parse_macro_input, punctuated::Punctuated, spanned::Spanned, token::Comma, Data, DeriveInput,
+    Field, Fields, FieldsNamed, FieldsUnnamed, Generics, Type,
 };
+
+const ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK: &str =
+    "only one statement is allowed inside `nest!` block";
+const ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK: &str =
+    "only struct and enum are supported inside nest! block";
 
 fn find_idents_in_token_tree_and_exit_early(
     token_stream: proc_macro2::TokenStream,
@@ -246,7 +251,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 &root_attrs,
             ) {
                 Ok(tuple) => tuple,
-                Err(_) => return original_item,
+                Err(error_stream) => return TokenStream::from(error_stream),
             };
 
             let expanded = quote! {
@@ -285,7 +290,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         &root_attrs,
                     ) {
                         Ok(tuple) => tuple,
-                        Err(_) => return original_item,
+                        Err(error_stream) => return TokenStream::from(error_stream),
                     };
 
                 variant.fields = match variant.fields {
@@ -328,7 +333,7 @@ fn convert_nest_to_structs(
     root_generics: &Generics,
     root_vis: &syn::Visibility,
     root_attrs: &Vec<syn::Attribute>,
-) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), ()> {
+) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), proc_macro2::TokenStream> {
     let root_attrs = root_attrs
         .iter()
         .filter(|attr| !attr.path().is_ident("doc"))
@@ -420,40 +425,63 @@ fn convert_nest_to_structs(
                             }
                         };
 
-                        let body_type =
-                            match syn::parse2::<DeriveInput>(quote! { struct Foo #group }.into()) {
-                                Ok(_) => BodyType::Struct,
-                                Err(_) => match syn::parse2::<DeriveInput>(
-                                    quote! { enum Foo #group }.into(),
-                                ) {
+                        let body_type = match syn::parse2::<DeriveInput>(
+                            quote! { struct Foo #group }.into(),
+                        ) {
+                            Ok(_) => BodyType::Struct,
+                            Err(struct_parse_err) => {
+                                match syn::parse2::<DeriveInput>(quote! { enum Foo #group }.into())
+                                {
                                     Ok(_) => BodyType::Enum,
-                                    Err(_) => {
+                                    Err(enum_parse_err) => {
                                         match syn::parse2::<syn::Block>(group.into_token_stream()) {
                                             Ok(block) => {
                                                 if block.stmts.len() > 1 {
-                                                    // @TODO-ZM: return parsing error
-                                                    // return Err(());
+                                                    let mut combined_error = syn::Error::new(
+                                                        block.stmts.iter().nth(1).unwrap().span(),
+                                                        ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK,
+                                                    );
+
+                                                    block.stmts.iter().skip(1).for_each(|stmt| {
+                                                        combined_error.combine(syn::Error::new(
+                                                            stmt.span(),
+                                                            ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK,
+                                                        ));
+                                                    });
+
+                                                    return Err(combined_error.to_compile_error());
                                                 }
-                                                let (item, ident, generics) =
-                                                    match block.stmts.first() {
-                                                        Some(statement) => match statement {
-                                                            syn::Stmt::Item(item) => match item {
-                                                                syn::Item::Struct(struct_item) => (
-                                                                    item,
-                                                                    struct_item.ident.clone(),
-                                                                    struct_item.generics.clone(),
-                                                                ),
-                                                                syn::Item::Enum(enum_item) => (
-                                                                    item,
-                                                                    enum_item.ident.clone(),
-                                                                    enum_item.generics.clone(),
-                                                                ),
-                                                                _ => return Err(()),
-                                                            },
-                                                            _ => return Err(()),
-                                                        },
-                                                        None => return Err(()),
-                                                    };
+                                                let only_stmt = block.stmts.first().unwrap();
+                                                let (item, ident, generics) = match only_stmt {
+                                                    syn::Stmt::Item(item) => match item {
+                                                        syn::Item::Struct(struct_item) => (
+                                                            item,
+                                                            struct_item.ident.clone(),
+                                                            struct_item.generics.clone(),
+                                                        ),
+                                                        syn::Item::Enum(enum_item) => (
+                                                            item,
+                                                            enum_item.ident.clone(),
+                                                            enum_item.generics.clone(),
+                                                        ),
+                                                        _ => {
+                                                            return Err(
+                                                                    syn::Error::new(
+                                                                        item.span(),
+                                                                        ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
+                                                                    ).to_compile_error()
+                                                                );
+                                                        }
+                                                    },
+                                                    _ => {
+                                                        return Err(
+                                                                syn::Error::new(
+                                                                    only_stmt.span(),
+                                                                    ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
+                                                                ).to_compile_error()
+                                                            );
+                                                    }
+                                                };
                                                 indices_to_replace.push((
                                                     index,
                                                     TokenTree::Group(proc_macro2::Group::new(
@@ -478,13 +506,36 @@ fn convert_nest_to_structs(
                                                 index += 2;
                                                 continue;
                                             }
-                                            // in case of error, we print struct error not enum error
-                                            // @TODO-ZM: return parsing error
-                                            Err(_) => return Err(()),
+                                            Err(block_parse_err) => {
+                                                let mut combined_error = syn::Error::new(
+                                                    struct_parse_err.span(),
+                                                    format!(
+                                                        "if nesting a struct: {}",
+                                                        struct_parse_err
+                                                    ),
+                                                );
+                                                combined_error.combine(syn::Error::new(
+                                                    enum_parse_err.span(),
+                                                    format!(
+                                                        "if nesting an enum: {}",
+                                                        enum_parse_err
+                                                    ),
+                                                ));
+                                                combined_error.combine(syn::Error::new(
+                                                    block_parse_err.span(),
+                                                    format!(
+                                                        "if nesting a block: {}",
+                                                        block_parse_err
+                                                    ),
+                                                ));
+
+                                                return Err(combined_error.to_compile_error());
+                                            }
                                         }
                                     }
-                                },
-                            };
+                                }
+                            }
+                        };
 
                         let body_type_syn = match body_type {
                             BodyType::Struct => quote! { struct },

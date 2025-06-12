@@ -1,0 +1,11 @@
+error: only one statement is allowed inside `nest!` block
+  --> tests/cases/parse_error/4_more_than_one_stmt_in_block.rs:14:9
+   |
+14 |         struct SecondCustomName {
+   |         ^^^^^^
+
+error: only one statement is allowed inside `nest!` block
+  --> tests/cases/parse_error/4_more_than_one_stmt_in_block.rs:19:9
+   |
+19 |         /// Doc comment for ThirdCustomName
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
