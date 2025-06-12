@@ -171,8 +171,8 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{quote, ToTokens};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, token::Comma, Data, DeriveInput, Field, Fields,
-    FieldsNamed, FieldsUnnamed, Generics, Type,
+    parse_macro_input, punctuated::Punctuated, spanned::Spanned, token::Comma, Data, DeriveInput,
+    Field, Fields, FieldsNamed, FieldsUnnamed, Generics, Type,
 };
 
 fn find_idents_in_token_tree_and_exit_early(
@@ -432,7 +432,21 @@ fn convert_nest_to_structs(
                                         match syn::parse2::<syn::Block>(group.into_token_stream()) {
                                             Ok(block) => {
                                                 if block.stmts.len() > 1 {
-                                                    todo!("error: only one statement is allowed inside nest! block");
+                                                    let err_msg =
+                                                        format!("only one statement is allowed inside `nest!` block");
+                                                    let mut combined_error = syn::Error::new(
+                                                        block.stmts.iter().nth(1).unwrap().span(),
+                                                        &err_msg,
+                                                    );
+
+                                                    block.stmts.iter().skip(1).for_each(|stmt| {
+                                                        combined_error.combine(syn::Error::new(
+                                                            stmt.span(),
+                                                            &err_msg,
+                                                        ));
+                                                    });
+
+                                                    return Err(combined_error.to_compile_error());
                                                 }
                                                 let (item, ident, generics) = match block
                                                     .stmts
