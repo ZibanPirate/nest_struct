@@ -1,5 +1,5 @@
 error: only struct and enum are supported inside nest! block
- --> tests/cases/parse_error/4_const_stmt_in_block.rs:9:9
+ --> tests/cases/parse_error/6_const_stmt_in_block.rs:9:9
   |
 9 |         const NAME: &str = "John Doe";
   |         ^^^^^

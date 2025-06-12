@@ -3,12 +3,8 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct Nested {
+struct NestedEnum {
     id: u32,
-    name: nest! {
-        first: String
-        last: String,
-    },
     nested_enum: nest! {
         First
         Last,
