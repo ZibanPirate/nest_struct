@@ -1,0 +1,5 @@
+error: only struct and enum are supported inside nest! block
+ --> tests/cases/parse_error/3_func_call_in_block.rs:9:9
+  |
+9 |         some_func_call("test", 123);
+  |         ^^^^^^^^^^^^^^

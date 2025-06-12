@@ -177,6 +177,8 @@ use syn::{
 
 const ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK: &str =
     "only one statement is allowed inside `nest!` block";
+const ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK: &str =
+    "only struct and enum are supported inside nest! block";
 
 fn find_idents_in_token_tree_and_exit_early(
     token_stream: proc_macro2::TokenStream,
@@ -449,32 +451,35 @@ fn convert_nest_to_structs(
 
                                                     return Err(combined_error.to_compile_error());
                                                 }
-                                                let (item, ident, generics) = match block
-                                                    .stmts
-                                                    .first()
-                                                {
-                                                    Some(statement) => match statement {
-                                                        syn::Stmt::Item(item) => match item {
-                                                            syn::Item::Struct(struct_item) => (
-                                                                item,
-                                                                struct_item.ident.clone(),
-                                                                struct_item.generics.clone(),
-                                                            ),
-                                                            syn::Item::Enum(enum_item) => (
-                                                                item,
-                                                                enum_item.ident.clone(),
-                                                                enum_item.generics.clone(),
-                                                            ),
-                                                            _ => {
-                                                                todo!("error: only struct and enum are supported inside nest! block");
-                                                            }
-                                                        },
+                                                let only_stmt = block.stmts.first().unwrap();
+                                                let (item, ident, generics) = match only_stmt {
+                                                    syn::Stmt::Item(item) => match item {
+                                                        syn::Item::Struct(struct_item) => (
+                                                            item,
+                                                            struct_item.ident.clone(),
+                                                            struct_item.generics.clone(),
+                                                        ),
+                                                        syn::Item::Enum(enum_item) => (
+                                                            item,
+                                                            enum_item.ident.clone(),
+                                                            enum_item.generics.clone(),
+                                                        ),
                                                         _ => {
-                                                            todo!("error: only struct and enum are supported inside nest! block");
+                                                            return Err(
+                                                                    syn::Error::new(
+                                                                        item.span(),
+                                                                        ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
+                                                                    ).to_compile_error()
+                                                                );
                                                         }
                                                     },
-                                                    None => {
-                                                        todo!("return empty struct instead of error (useful for marker type)");
+                                                    _ => {
+                                                        return Err(
+                                                                syn::Error::new(
+                                                                    only_stmt.span(),
+                                                                    ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
+                                                                ).to_compile_error()
+                                                            );
                                                     }
                                                 };
                                                 indices_to_replace.push((
