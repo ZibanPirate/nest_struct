@@ -149,22 +149,22 @@
 //!
 //! ## Features
 //!
-//! -   [x] deep nesting (no theoretical limit).
-//! -   [x] nest `struct` inside another `struct`.
-//! -   [x] nest `enum` inside another `enum`.
-//! -   [x] nest `enum` inside a `struct` and vice-versa.
-//! -   [x] inherit `derive` and other attribute macros from root `struct`.
-//! -   [x] auto-generate inner `struct` names.
-//! -   [x] overwrite the auto-generated inner struct name.
+//! - [x] deep nesting (no theoretical limit).
+//! - [x] nest `struct` inside another `struct`.
+//! - [x] nest `enum` inside another `enum`.
+//! - [x] nest `enum` inside a `struct` and vice-versa.
+//! - [x] inherit `derive` and other attribute macros from root `struct`.
+//! - [x] auto-generate inner `struct` names.
+//! - [x] overwrite the auto-generated inner struct name.
 //!
 //! Feature parity with native Rust code:
 //!
-//! -   [x] `impl` block on inner `struct`s.
-//! -   [x] define `derive` and other attribute macros individually per inner `struct`.
-//! -   [x] define doc comments individually per inner `struct`.
-//! -   [ ] useful compiler error messages.
-//! -   [x] support generic types.
-//! -   [x] support lifetimes.
+//! - [x] `impl` block on inner `struct`s.
+//! - [x] define `derive` and other attribute macros individually per inner `struct`.
+//! - [x] define doc comments individually per inner `struct`.
+//! - [ ] useful compiler error messages.
+//! - [x] support generic types.
+//! - [x] support lifetimes.
 
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
