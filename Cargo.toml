@@ -34,3 +34,7 @@ serde_json = "1"
 [lib]
 proc-macro = true
 path = "src/lib.rs"
+
+# Keep this crate standalone even when it is checked out inside another
+# Cargo workspace (see ../Cargo.toml in the dev environment).
+[workspace]
