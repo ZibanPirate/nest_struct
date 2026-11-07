@@ -3,12 +3,12 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct Config<P, 'a> {
+struct Config<'a, P> {
     version: &'a str,
     // auto-generated name is overwritten to be ConfigServer
     main_server: nest! {
         // Doc comment for ConfigServer
-        #[Derive(Debug)]
+        #[derive(Debug)]
         struct ConfigServer<'a, P> {
             name: &'a str,
             host: &'a str,

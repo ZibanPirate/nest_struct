@@ -15,5 +15,5 @@ enum Generic<'a, ID> {
     None,
     NestedEnum(GenericNestedEnum, ID),
     NestedStruct(GenericNestedStruct<'a>, ID),
-    id(ID),
+    Id(ID),
 }

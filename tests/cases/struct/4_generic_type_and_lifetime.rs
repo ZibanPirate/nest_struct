@@ -3,7 +3,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct Generic<ID, 'a> {
+struct Generic<'a, ID> {
     id: ID,
     // all generic items are used: 'a, ID
     name: nest! {

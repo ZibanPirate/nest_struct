@@ -3,7 +3,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-enum DeepNested<AGE, 'a> {
+enum DeepNested<'a> {
     Named {
         a: u32,
         b: u32,
@@ -13,9 +13,9 @@ enum DeepNested<AGE, 'a> {
     NestedEnum(
         // auto-generated name is overwritten to be CustomName
         nest! {
-            #[Derive(Debug)]
+            #[derive(Debug)]
             /// Doc comment for CustomName
-            enum CustomName {
+            enum CustomName<'a> {
                 First,
                 Last (nest! {
                     // generic are only used in the last nest
@@ -27,5 +27,5 @@ enum DeepNested<AGE, 'a> {
         u32,
     ),
     // now we reuse the auto-generated name
-    id(CustomName<'a>),
+    Id(CustomName<'a>),
 }
