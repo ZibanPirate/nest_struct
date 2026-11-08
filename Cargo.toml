@@ -35,3 +35,10 @@ serde_json = "1"
 [lib]
 proc-macro = true
 path = "src/lib.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+ptr_arg = "warn"
+too_many_arguments = "warn"
