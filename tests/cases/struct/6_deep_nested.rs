@@ -4,7 +4,7 @@ extern crate nest_struct;
 
 #[nest_struct]
 #[derive(Debug)]
-struct DeepNested<AGE, 'a> {
+struct DeepNested<'a, AGE> {
     id: u32,
     name: nest! {
         first: String,

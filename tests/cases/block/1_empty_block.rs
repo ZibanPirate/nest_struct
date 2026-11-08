@@ -3,7 +3,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-struct Config {
+struct Config<'a> {
     version: &'a str,
     main_server: nest! {
         // nothing here

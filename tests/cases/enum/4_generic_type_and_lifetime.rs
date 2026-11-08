@@ -3,7 +3,7 @@
 extern crate nest_struct;
 
 #[nest_struct]
-enum Generic<ID, 'a> {
+enum Generic<'a, ID> {
     Named {
         a: u32,
         b: u32,
@@ -26,5 +26,5 @@ enum Generic<ID, 'a> {
         },
         ID,
     ),
-    id(ID),
+    Id(ID),
 }

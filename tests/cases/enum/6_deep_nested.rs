@@ -4,7 +4,7 @@ extern crate nest_struct;
 
 #[nest_struct]
 #[derive(Debug)]
-enum DeepNested<AGE, 'a> {
+enum DeepNested<'a, AGE> {
     Named {
         a: u32,
         b: u32,
@@ -23,5 +23,5 @@ enum DeepNested<AGE, 'a> {
         },
         u32,
     ),
-    id(ID),
+    Id(AGE),
 }

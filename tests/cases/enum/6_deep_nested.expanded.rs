@@ -40,7 +40,7 @@ enum DeepNested<'a, AGE> {
     Unnamed(u32, u32),
     None,
     NestedEnum(DeepNestedNestedEnum<'a>, u32),
-    id(ID),
+    Id(AGE),
 }
 #[automatically_derived]
 impl<'a, AGE: ::core::fmt::Debug> ::core::fmt::Debug for DeepNested<'a, AGE> {
@@ -74,8 +74,8 @@ impl<'a, AGE: ::core::fmt::Debug> ::core::fmt::Debug for DeepNested<'a, AGE> {
                     &__self_1,
                 )
             }
-            DeepNested::id(__self_0) => {
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "id", &__self_0)
+            DeepNested::Id(__self_0) => {
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Id", &__self_0)
             }
         }
     }
