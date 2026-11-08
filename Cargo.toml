@@ -22,7 +22,8 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-macrotest = "1"
+# todo-zm: upstream this patch of macrotest
+macrotest = { git = "https://github.com/ZibanPirate/macrotest", branch = "feat/source-suffix" }
 trybuild = "1"
 reqwest = { version = "0.12", default-features = false, features = [
     "blocking",

@@ -1,16 +1,16 @@
 #[test]
 pub fn expand_struct() {
-    macrotest::expand("tests/cases/struct/*.rs");
+    macrotest::expand_with_source_suffix("tests/cases/struct/*.before.rs", ".before");
 }
 
 #[test]
 fn expand_enum() {
-    macrotest::expand("tests/cases/enum/*.rs");
+    macrotest::expand_with_source_suffix("tests/cases/enum/*.before.rs", ".before");
 }
 
 #[test]
 fn expand_block() {
-    macrotest::expand("tests/cases/block/*.rs");
+    macrotest::expand_with_source_suffix("tests/cases/block/*.before.rs", ".before");
 }
 
 #[test]
