@@ -180,12 +180,6 @@ const ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK: &str =
 const ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK: &str =
     "only struct and enum are supported inside nest! block";
 
-/// `convert_case` 0.11 removed `Casing::is_case`; a string is already in a
-/// case when converting it to that case is a no-op.
-fn is_case(s: &str, case: Case) -> bool {
-    s.to_case(case) == s
-}
-
 fn find_idents_in_token_tree_and_exit_early(
     token_stream: proc_macro2::TokenStream,
     ident_names: &Vec<String>,
@@ -408,27 +402,25 @@ fn convert_nest_to_structs(
                     Some(TokenTree::Group(group)),
                 ) => {
                     let ident_str = ident.to_string();
-                    if (ident_str == "nest" || is_case(&ident_str, Case::Pascal))
-                        && punct.as_char() == '!'
-                    {
-                        let inner_struct_name = match is_case(&ident_str, Case::Pascal) {
-                            true => syn::Ident::new(&ident_str, proc_macro2::Span::call_site()),
-                            false => {
-                                let struct_name_index = match indices_to_replace.len() {
-                                    0 => "",
-                                    n => &n.to_string(),
-                                };
-                                let struct_name_maybe_numbered = format!(
-                                    "{}{}{}",
-                                    root_struct_name,
-                                    field_name.replace("r#", "").to_case(Case::Pascal),
-                                    struct_name_index
-                                );
-                                syn::Ident::new(
-                                    &struct_name_maybe_numbered,
-                                    proc_macro2::Span::call_site(),
-                                )
-                            }
+                    let is_pascal = ident_str.to_case(Case::Pascal) == ident_str;
+                    if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
+                        let inner_struct_name = if is_pascal {
+                            syn::Ident::new(&ident_str, proc_macro2::Span::call_site())
+                        } else {
+                            let struct_name_index = match indices_to_replace.len() {
+                                0 => "",
+                                n => &n.to_string(),
+                            };
+                            let struct_name_maybe_numbered = format!(
+                                "{}{}{}",
+                                root_struct_name,
+                                field_name.replace("r#", "").to_case(Case::Pascal),
+                                struct_name_index
+                            );
+                            syn::Ident::new(
+                                &struct_name_maybe_numbered,
+                                proc_macro2::Span::call_site(),
+                            )
                         };
 
                         let body_type = match syn::parse2::<DeriveInput>(
