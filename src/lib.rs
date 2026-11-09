@@ -402,27 +402,25 @@ fn convert_nest_to_structs(
                     Some(TokenTree::Group(group)),
                 ) => {
                     let ident_str = ident.to_string();
-                    if (ident_str == "nest" || ident_str.is_case(Case::Pascal))
-                        && punct.as_char() == '!'
-                    {
-                        let inner_struct_name = match ident_str.is_case(Case::Pascal) {
-                            true => syn::Ident::new(&ident_str, proc_macro2::Span::call_site()),
-                            false => {
-                                let struct_name_index = match indices_to_replace.len() {
-                                    0 => "",
-                                    n => &n.to_string(),
-                                };
-                                let struct_name_maybe_numbered = format!(
-                                    "{}{}{}",
-                                    root_struct_name,
-                                    field_name.replace("r#", "").to_case(Case::Pascal),
-                                    struct_name_index
-                                );
-                                syn::Ident::new(
-                                    &struct_name_maybe_numbered,
-                                    proc_macro2::Span::call_site(),
-                                )
-                            }
+                    let is_pascal = ident_str.to_case(Case::Pascal) == ident_str;
+                    if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
+                        let inner_struct_name = if is_pascal {
+                            syn::Ident::new(&ident_str, proc_macro2::Span::call_site())
+                        } else {
+                            let struct_name_index = match indices_to_replace.len() {
+                                0 => "",
+                                n => &n.to_string(),
+                            };
+                            let struct_name_maybe_numbered = format!(
+                                "{}{}{}",
+                                root_struct_name,
+                                field_name.replace("r#", "").to_case(Case::Pascal),
+                                struct_name_index
+                            );
+                            syn::Ident::new(
+                                &struct_name_maybe_numbered,
+                                proc_macro2::Span::call_site(),
+                            )
                         };
 
                         let body_type = match syn::parse2::<DeriveInput>(

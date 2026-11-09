@@ -16,18 +16,18 @@ categories = [
 ]
 
 [dependencies]
-convert_case = "0.7"
+convert_case = "0.12"
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2", features = ["full"] }
+syn = { version = "3", features = ["full"] }
 
 [dev-dependencies]
 # todo-zm: upstream this patch of macrotest
 macrotest = { git = "https://github.com/ZibanPirate/macrotest", branch = "feat/source-suffix" }
-trybuild = "1"
-reqwest = { version = "0.12", default-features = false, features = [
+trybuild = "1.0.122"
+reqwest = { version = "0.13", default-features = false, features = [
     "blocking",
-    "rustls-tls",
+    "rustls",
 ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
