@@ -332,7 +332,7 @@ fn convert_nest_to_structs(
     middle_ident: Option<&syn::Ident>,
     root_generics: &Generics,
     root_vis: &syn::Visibility,
-    root_attrs: &Vec<syn::Attribute>,
+    root_attrs: &[syn::Attribute],
 ) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), proc_macro2::TokenStream> {
     let root_attrs = root_attrs
         .iter()
@@ -395,7 +395,8 @@ fn convert_nest_to_structs(
                 token_tree.get(index + 1),
                 token_tree.get(index + 2),
             );
-            match (ident.clone(), punct, group) {
+            #[allow(clippy::single_match)] // rewritten by the planned token walker
+            match (ident, punct, group) {
                 (
                     Some(TokenTree::Ident(ident)),
                     Some(TokenTree::Punct(punct)),
@@ -424,19 +425,18 @@ fn convert_nest_to_structs(
                         };
 
                         let body_type = match syn::parse2::<DeriveInput>(
-                            quote! { struct Foo #group }.into(),
+                            quote! { struct Foo #group },
                         ) {
                             Ok(_) => BodyType::Struct,
                             Err(struct_parse_err) => {
-                                match syn::parse2::<DeriveInput>(quote! { enum Foo #group }.into())
-                                {
+                                match syn::parse2::<DeriveInput>(quote! { enum Foo #group }) {
                                     Ok(_) => BodyType::Enum,
                                     Err(enum_parse_err) => {
                                         match syn::parse2::<syn::Block>(group.into_token_stream()) {
                                             Ok(block) => {
                                                 if block.stmts.len() > 1 {
                                                     let mut combined_error = syn::Error::new(
-                                                        block.stmts.iter().nth(1).unwrap().span(),
+                                                        block.stmts.get(1).unwrap().span(),
                                                         ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK,
                                                     );
 
