@@ -45,3 +45,23 @@ jobs:
               with:
                   components: rustfmt
             - uses: actions-rust-lang/rustfmt@v1
+
+    clippy:
+        name: cargo clippy
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions-rust-lang/setup-rust-toolchain@v1
+              with:
+                  components: clippy
+            - run: cargo clippy --all-targets --all-features -- -D warnings
+
+    audit:
+        name: cargo audit
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: taiki-e/install-action@v2
+              with:
+                  tool: cargo-audit
+            - run: cargo audit
