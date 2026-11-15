@@ -395,7 +395,7 @@ fn convert_nest_to_structs(
                 token_tree.get(index + 1),
                 token_tree.get(index + 2),
             );
-            #[allow(clippy::single_match)] // rewritten by the planned token walker
+            #[allow(clippy::single_match)] // todo-zm: refactor this match into an if let
             match (ident, punct, group) {
                 (
                     Some(TokenTree::Ident(ident)),
