@@ -28,8 +28,8 @@ impl<'a> ::core::fmt::Debug for DeepNestedNestedEnum<'a> {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            DeepNestedNestedEnum::First => ::core::fmt::Formatter::write_str(f, "First"),
-            DeepNestedNestedEnum::Last(__self_0) => {
+            Self::First => ::core::fmt::Formatter::write_str(f, "First"),
+            Self::Last(__self_0) => {
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Last", &__self_0)
             }
         }
@@ -47,7 +47,7 @@ impl<'a, AGE: ::core::fmt::Debug> ::core::fmt::Debug for DeepNested<'a, AGE> {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            DeepNested::Named { a: __self_0, b: __self_1 } => {
+            Self::Named { a: __self_0, b: __self_1 } => {
                 ::core::fmt::Formatter::debug_struct_field2_finish(
                     f,
                     "Named",
@@ -57,7 +57,7 @@ impl<'a, AGE: ::core::fmt::Debug> ::core::fmt::Debug for DeepNested<'a, AGE> {
                     &__self_1,
                 )
             }
-            DeepNested::Unnamed(__self_0, __self_1) => {
+            Self::Unnamed(__self_0, __self_1) => {
                 ::core::fmt::Formatter::debug_tuple_field2_finish(
                     f,
                     "Unnamed",
@@ -65,8 +65,8 @@ impl<'a, AGE: ::core::fmt::Debug> ::core::fmt::Debug for DeepNested<'a, AGE> {
                     &__self_1,
                 )
             }
-            DeepNested::None => ::core::fmt::Formatter::write_str(f, "None"),
-            DeepNested::NestedEnum(__self_0, __self_1) => {
+            Self::None => ::core::fmt::Formatter::write_str(f, "None"),
+            Self::NestedEnum(__self_0, __self_1) => {
                 ::core::fmt::Formatter::debug_tuple_field2_finish(
                     f,
                     "NestedEnum",
@@ -74,7 +74,7 @@ impl<'a, AGE: ::core::fmt::Debug> ::core::fmt::Debug for DeepNested<'a, AGE> {
                     &__self_1,
                 )
             }
-            DeepNested::Id(__self_0) => {
+            Self::Id(__self_0) => {
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Id", &__self_0)
             }
         }

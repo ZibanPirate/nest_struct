@@ -1,4 +1,3 @@
 [toolchain]
-# todo-zm: upgrade the toolchain and regenerate the expansion snapshots
-channel = "1.94.1"
+channel = "1.100.0"
 components = ["rustfmt", "clippy"]
