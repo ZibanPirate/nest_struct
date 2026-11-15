@@ -414,7 +414,10 @@ fn convert_nest_to_structs(
                             let struct_name_maybe_numbered = format!(
                                 "{}{}{}",
                                 root_struct_name,
-                                field_name.replace("r#", "").to_pascal_case(),
+                                field_name
+                                    .strip_prefix("r#")
+                                    .unwrap_or(&field_name)
+                                    .to_pascal_case(),
                                 struct_name_index
                             );
                             syn::Ident::new(
