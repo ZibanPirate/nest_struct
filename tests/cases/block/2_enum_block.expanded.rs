@@ -29,8 +29,8 @@ impl<'a> ::core::fmt::Debug for CustomName<'a> {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            CustomName::First => ::core::fmt::Formatter::write_str(f, "First"),
-            CustomName::Last(__self_0) => {
+            Self::First => ::core::fmt::Formatter::write_str(f, "First"),
+            Self::Last(__self_0) => {
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Last", &__self_0)
             }
         }

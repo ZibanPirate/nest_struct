@@ -48,7 +48,7 @@ impl ::core::fmt::Debug for AttributeMacro {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
-            AttributeMacro::Named { a: __self_0, b: __self_1 } => {
+            Self::Named { a: __self_0, b: __self_1 } => {
                 ::core::fmt::Formatter::debug_struct_field2_finish(
                     f,
                     "Named",
@@ -58,7 +58,7 @@ impl ::core::fmt::Debug for AttributeMacro {
                     &__self_1,
                 )
             }
-            AttributeMacro::Unnamed(__self_0, __self_1) => {
+            Self::Unnamed(__self_0, __self_1) => {
                 ::core::fmt::Formatter::debug_tuple_field2_finish(
                     f,
                     "Unnamed",
@@ -66,8 +66,8 @@ impl ::core::fmt::Debug for AttributeMacro {
                     &__self_1,
                 )
             }
-            AttributeMacro::None => ::core::fmt::Formatter::write_str(f, "None"),
-            AttributeMacro::NestedEnum(__self_0, __self_1) => {
+            Self::None => ::core::fmt::Formatter::write_str(f, "None"),
+            Self::NestedEnum(__self_0, __self_1) => {
                 ::core::fmt::Formatter::debug_tuple_field2_finish(
                     f,
                     "NestedEnum",
@@ -75,7 +75,7 @@ impl ::core::fmt::Debug for AttributeMacro {
                     &__self_1,
                 )
             }
-            AttributeMacro::NestedStruct(__self_0, __self_1) => {
+            Self::NestedStruct(__self_0, __self_1) => {
                 ::core::fmt::Formatter::debug_tuple_field2_finish(
                     f,
                     "NestedStruct",
