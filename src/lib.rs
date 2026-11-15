@@ -240,6 +240,53 @@ impl NestContext<'_> {
     }
 }
 
+fn generated_ident(
+    root_name: &str,
+    field_name: &str,
+    nest_index: usize,
+    explicit_name: Option<&str>,
+) -> syn::Ident {
+    let name = match explicit_name {
+        Some(name) => name.to_string(),
+        None => {
+            let suffix = if nest_index == 0 {
+                String::new()
+            } else {
+                nest_index.to_string()
+            };
+            format!(
+                "{}{}{}",
+                root_name,
+                field_name
+                    .strip_prefix("r#")
+                    .unwrap_or(field_name)
+                    .to_pascal_case(),
+                suffix
+            )
+        }
+    };
+
+    syn::Ident::new(&name, proc_macro2::Span::call_site())
+}
+
+fn filter_generics(generics: &Generics, found_names: &[String]) -> Generics {
+    let mut filtered = generics.clone();
+    filtered.params = filtered
+        .params
+        .into_iter()
+        .filter(|param| {
+            param
+                .to_token_stream()
+                .into_iter()
+                .any(|token| match token {
+                    TokenTree::Ident(ident) => found_names.contains(&ident.to_string()),
+                    _ => false,
+                })
+        })
+        .collect();
+    filtered
+}
+
 /// Nest struct definitions with minimal syntax changes.
 /// eg:
 /// ```rust
@@ -424,27 +471,12 @@ fn convert_nest_to_structs(
                     let ident_str = ident.to_string();
                     let is_pascal = ident_str.to_pascal_case() == ident_str;
                     if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
-                        let inner_struct_name = if is_pascal {
-                            syn::Ident::new(&ident_str, proc_macro2::Span::call_site())
-                        } else {
-                            let struct_name_index = match indices_to_replace.len() {
-                                0 => "",
-                                n => &n.to_string(),
-                            };
-                            let struct_name_maybe_numbered = format!(
-                                "{}{}{}",
-                                root_struct_name,
-                                field_name
-                                    .strip_prefix("r#")
-                                    .unwrap_or(&field_name)
-                                    .to_pascal_case(),
-                                struct_name_index
-                            );
-                            syn::Ident::new(
-                                &struct_name_maybe_numbered,
-                                proc_macro2::Span::call_site(),
-                            )
-                        };
+                        let inner_struct_name = generated_ident(
+                            &root_struct_name,
+                            &field_name,
+                            indices_to_replace.len(),
+                            is_pascal.then_some(ident_str.as_str()),
+                        );
 
                         let body_type = match syn::parse2::<DeriveInput>(
                             quote! { struct Foo #group },
@@ -566,20 +598,8 @@ fn convert_nest_to_structs(
 
                         // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
                         // that are used in the nested struct, identified by their names
-                        let mut struct_generic = context.generics.clone();
-                        struct_generic.params = struct_generic
-                            .params
-                            .into_iter()
-                            .filter(|param| {
-                                param.into_token_stream().to_token_stream().into_iter().any(
-                                    |token| match token {
-                                        TokenTree::Ident(ident) => found_ident_names_for_generics
-                                            .contains(&ident.to_string()),
-                                        _ => false,
-                                    },
-                                )
-                            })
-                            .collect();
+                        let struct_generic =
+                            filter_generics(context.generics, &found_ident_names_for_generics);
 
                         let generic = quote! { #struct_generic };
 
