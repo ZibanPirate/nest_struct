@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #[macro_use]
 extern crate nest_struct;
-struct MultiNestPair<'a> {
+struct MultiNestPair0<'a> {
     left: &'a str,
 }
 struct MultiNestPair1<T> {
@@ -9,5 +9,5 @@ struct MultiNestPair1<T> {
 }
 struct MultiNest<'a, T> {
     id: u32,
-    pair: Result<MultiNestPair<'a>, MultiNestPair1<T>>,
+    pair: Result<MultiNestPair0<'a>, MultiNestPair1<T>>,
 }
