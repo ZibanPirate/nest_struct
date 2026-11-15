@@ -418,7 +418,12 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
         Data::Struct(root_struct_body) => {
             let root_fields = match root_struct_body.fields {
                 Fields::Named(fields) => fields.named,
-                _ => return Ok(original_item),
+                _ => {
+                    return Err(syn::Error::new(
+                        root_struct_ident.span(),
+                        "nest_struct requires a named-field struct or enum",
+                    ));
+                }
             };
 
             let (additional_structs, new_root_fields) = convert_nest_to_structs(
