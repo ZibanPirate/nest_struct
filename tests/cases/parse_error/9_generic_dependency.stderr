@@ -1,0 +1,11 @@
+error: nested type uses a generic bound that depends on a dropped generic parameter
+ --> tests/cases/parse_error/9_generic_dependency.rs:5:15
+  |
+5 | struct Dep<T, U: Into<T>> {
+  |               ^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/cases/parse_error/9_generic_dependency.rs:9:2
+  |
+9 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/cases/parse_error/9_generic_dependency.rs`
