@@ -578,12 +578,9 @@ fn convert_nest_to_structs(
                             generics,
                         } => {
                             let item = *item;
-                            let replacement_ty = syn::parse_str::<Type>(&format!(
-                                "{}{}",
-                                ident,
-                                generics.into_token_stream()
-                            ))
-                            .unwrap();
+                            let (_, ty_generics, _) = generics.split_for_impl();
+                            let replacement_ty =
+                                syn::parse2::<Type>(quote! { #ident #ty_generics }).unwrap();
                             new_tokens.push(TokenTree::Group(proc_macro2::Group::new(
                                 proc_macro2::Delimiter::None,
                                 replacement_ty.into_token_stream(),
@@ -622,10 +619,9 @@ fn convert_nest_to_structs(
                         collect_matching_idents(group.stream(), &root_generic_names);
                     let struct_generic =
                         filter_generics(context.generics, &found_ident_names_for_generics);
-                    let generic = quote! { #struct_generic };
+                    let (_, ty_generics, _) = struct_generic.split_for_impl();
                     let inner_struct_name_maybe_with_generic =
-                        syn::parse_str::<Type>(&format!("{}{}", inner_struct_name, generic))
-                            .unwrap();
+                        syn::parse2::<Type>(quote! { #inner_struct_name #ty_generics }).unwrap();
 
                     new_tokens.push(TokenTree::Group(proc_macro2::Group::new(
                         proc_macro2::Delimiter::None,
@@ -634,7 +630,7 @@ fn convert_nest_to_structs(
                     additional_structs.push(quote! {
                         #[nest_struct]
                         #(#root_attrs)*
-                        #root_vis #body_type_syn #inner_struct_name #generic #group
+                        #root_vis #body_type_syn #inner_struct_name #struct_generic #group
                     });
 
                     if ident_str == "nest" {
