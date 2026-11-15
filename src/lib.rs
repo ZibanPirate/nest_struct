@@ -185,18 +185,26 @@ fn collect_matching_idents(
     ident_names: &[String],
 ) -> Vec<String> {
     let mut idents: Vec<String> = vec![];
+    let mut tokens = token_stream.into_iter().peekable();
 
-    token_stream.into_iter().for_each(|token| match token {
-        TokenTree::Ident(ident) => {
-            if ident_names.contains(&ident.to_string()) {
-                idents.push(ident.to_string());
+    while let Some(token) = tokens.next() {
+        match token {
+            TokenTree::Ident(ident) => {
+                let is_field_name = matches!(
+                    tokens.peek(),
+                    Some(TokenTree::Punct(punct))
+                        if punct.as_char() == ':' && punct.spacing() == proc_macro2::Spacing::Alone
+                );
+                if !is_field_name && ident_names.contains(&ident.to_string()) {
+                    idents.push(ident.to_string());
+                }
             }
+            TokenTree::Group(group) => {
+                idents.extend(collect_matching_idents(group.stream(), ident_names));
+            }
+            _ => {}
         }
-        TokenTree::Group(group) => {
-            idents.extend(collect_matching_idents(group.stream(), ident_names));
-        }
-        _ => {}
-    });
+    }
 
     idents.dedup();
 
