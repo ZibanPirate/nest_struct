@@ -166,7 +166,7 @@
 //! - [x] support generic types.
 //! - [x] support lifetimes.
 
-use convert_case::{Case, Casing};
+use heck::ToPascalCase;
 use proc_macro::TokenStream;
 use proc_macro2::TokenTree;
 use quote::{quote, ToTokens};
@@ -343,7 +343,7 @@ fn convert_nest_to_structs(
         "{}{}",
         root_struct_ident,
         match middle_ident {
-            Some(ident) => ident.to_string().to_case(Case::Pascal),
+            Some(ident) => ident.to_string().to_pascal_case(),
             None => "".to_string(),
         }
     );
@@ -402,7 +402,7 @@ fn convert_nest_to_structs(
                     Some(TokenTree::Group(group)),
                 ) => {
                     let ident_str = ident.to_string();
-                    let is_pascal = ident_str.to_case(Case::Pascal) == ident_str;
+                    let is_pascal = ident_str.to_pascal_case() == ident_str;
                     if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
                         let inner_struct_name = if is_pascal {
                             syn::Ident::new(&ident_str, proc_macro2::Span::call_site())
@@ -414,7 +414,7 @@ fn convert_nest_to_structs(
                             let struct_name_maybe_numbered = format!(
                                 "{}{}{}",
                                 root_struct_name,
-                                field_name.replace("r#", "").to_case(Case::Pascal),
+                                field_name.replace("r#", "").to_pascal_case(),
                                 struct_name_index
                             );
                             syn::Ident::new(
