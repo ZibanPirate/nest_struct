@@ -213,6 +213,33 @@ enum BodyType {
     Enum,
 }
 
+struct NestContext<'a> {
+    root_ident: &'a syn::Ident,
+    middle_ident: Option<&'a syn::Ident>,
+    generics: &'a Generics,
+    vis: &'a syn::Visibility,
+    attrs: &'a [syn::Attribute],
+}
+
+impl NestContext<'_> {
+    fn root_name(&self) -> String {
+        format!(
+            "{}{}",
+            self.root_ident,
+            self.middle_ident
+                .map(|ident| ident.to_string().to_pascal_case())
+                .unwrap_or_default()
+        )
+    }
+
+    fn root_attrs(&self) -> Vec<&syn::Attribute> {
+        self.attrs
+            .iter()
+            .filter(|attr| !attr.path().is_ident("doc"))
+            .collect()
+    }
+}
+
 /// Nest struct definitions with minimal syntax changes.
 /// eg:
 /// ```rust
@@ -251,11 +278,13 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
 
             let (additional_structs, new_root_fields) = convert_nest_to_structs(
                 root_fields,
-                root_struct_ident,
-                None,
-                &root_generics,
-                root_vis,
-                &root_attrs,
+                NestContext {
+                    root_ident: root_struct_ident,
+                    middle_ident: None,
+                    generics: &root_generics,
+                    vis: root_vis,
+                    attrs: &root_attrs,
+                },
             )?;
 
             let expanded = quote! {
@@ -286,11 +315,13 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
 
                 let (additional_structs_for_variant, new_variant_fields) = convert_nest_to_structs(
                     variant_fields,
-                    root_struct_ident,
-                    Some(&variant.ident),
-                    &root_generics,
-                    root_vis,
-                    &root_attrs,
+                    NestContext {
+                        root_ident: root_struct_ident,
+                        middle_ident: Some(&variant.ident),
+                        generics: &root_generics,
+                        vis: root_vis,
+                        attrs: &root_attrs,
+                    },
                 )?;
 
                 variant.fields = match variant.fields {
@@ -328,26 +359,14 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
 
 fn convert_nest_to_structs(
     fields: Punctuated<Field, Comma>,
-    root_struct_ident: &syn::Ident,
-    middle_ident: Option<&syn::Ident>,
-    root_generics: &Generics,
-    root_vis: &syn::Visibility,
-    root_attrs: &[syn::Attribute],
+    context: NestContext<'_>,
 ) -> syn::Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>)> {
-    let root_attrs = root_attrs
-        .iter()
-        .filter(|attr| !attr.path().is_ident("doc"))
-        .collect::<Vec<&syn::Attribute>>();
+    let root_attrs = context.root_attrs();
+    let root_struct_name = context.root_name();
+    let root_vis = context.vis;
 
-    let root_struct_name = format!(
-        "{}{}",
-        root_struct_ident,
-        match middle_ident {
-            Some(ident) => ident.to_string().to_pascal_case(),
-            None => "".to_string(),
-        }
-    );
-    let root_generic_names = root_generics
+    let root_generic_names = context
+        .generics
         .clone()
         .into_token_stream()
         .into_iter()
@@ -547,7 +566,7 @@ fn convert_nest_to_structs(
 
                         // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
                         // that are used in the nested struct, identified by their names
-                        let mut struct_generic = root_generics.clone();
+                        let mut struct_generic = context.generics.clone();
                         struct_generic.params = struct_generic
                             .params
                             .into_iter()
