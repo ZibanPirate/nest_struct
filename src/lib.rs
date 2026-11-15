@@ -413,6 +413,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
     let root_vis = &input.vis;
     let root_attrs = input.attrs;
     let root_generics = input.generics;
+    let (root_impl_generics, _, root_where_clause) = root_generics.split_for_impl();
 
     match input.data {
         Data::Struct(root_struct_body) => {
@@ -441,7 +442,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 #(#additional_structs)*
 
                 #(#root_attrs)*
-                #root_vis struct #root_struct_ident #root_generics {
+                #root_vis struct #root_struct_ident #root_impl_generics #root_where_clause {
                     #(#new_root_fields),*
                 }
             };
@@ -496,7 +497,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 #(#additional_structs)*
 
                 #(#root_attrs)*
-                #root_vis enum #root_struct_ident #root_generics {
+                #root_vis enum #root_struct_ident #root_impl_generics #root_where_clause {
                     #(#new_enum_variants),*
                 }
             };
@@ -632,7 +633,8 @@ fn convert_nest_to_structs(
                         collect_matching_idents(group.stream(), &root_generic_names);
                     let struct_generic =
                         filter_generics(context.generics, &found_ident_names_for_generics);
-                    let (_, ty_generics, _) = struct_generic.split_for_impl();
+                    let (impl_generics, ty_generics, where_clause) =
+                        struct_generic.split_for_impl();
                     let inner_struct_name_maybe_with_generic =
                         syn::parse2::<Type>(quote! { #inner_struct_name #ty_generics }).unwrap();
 
@@ -643,7 +645,7 @@ fn convert_nest_to_structs(
                     additional_structs.push(quote! {
                         #[nest_struct]
                         #(#root_attrs)*
-                        #root_vis #body_type_syn #inner_struct_name #struct_generic #group
+                        #root_vis #body_type_syn #inner_struct_name #impl_generics #where_clause #group
                     });
 
                     if ident_str == "nest" {
