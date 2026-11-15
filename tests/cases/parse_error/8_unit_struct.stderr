@@ -1,0 +1,11 @@
+error: nest_struct requires a named-field struct or enum
+ --> tests/cases/parse_error/8_unit_struct.rs:5:8
+  |
+5 | struct Unit;
+  |        ^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/cases/parse_error/8_unit_struct.rs:5:13
+  |
+5 | struct Unit;
+  |             ^ consider adding a `main` function to `$DIR/tests/cases/parse_error/8_unit_struct.rs`
