@@ -1,0 +1,11 @@
+error: nest! inside parentheses is not supported
+ --> tests/cases/parse_error/10_parenthesized_nest.rs:6:19
+  |
+6 |     inner: Option<(nest! { value: String })>,
+  |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/cases/parse_error/10_parenthesized_nest.rs:7:2
+  |
+7 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/cases/parse_error/10_parenthesized_nest.rs`
