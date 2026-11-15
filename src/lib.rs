@@ -244,30 +244,46 @@ impl NestContext<'_> {
 fn generated_ident(
     root_name: &str,
     field_name: &str,
-    nest_index: usize,
+    suffix: Option<usize>,
     explicit_name: Option<&str>,
 ) -> syn::Ident {
     let name = match explicit_name {
         Some(name) => name.to_string(),
-        None => {
-            let suffix = if nest_index == 0 {
-                String::new()
-            } else {
-                nest_index.to_string()
-            };
-            format!(
-                "{}{}{}",
-                root_name,
-                field_name
-                    .strip_prefix("r#")
-                    .unwrap_or(field_name)
-                    .to_pascal_case(),
-                suffix
-            )
-        }
+        None => format!(
+            "{}{}{}",
+            root_name,
+            field_name
+                .strip_prefix("r#")
+                .unwrap_or(field_name)
+                .to_pascal_case(),
+            suffix.map(|index| index.to_string()).unwrap_or_default()
+        ),
     };
 
     syn::Ident::new(&name, proc_macro2::Span::call_site())
+}
+
+fn auto_named_nest_count(ty: &Type) -> usize {
+    let tokens = ty
+        .clone()
+        .into_token_stream()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let mut count = 0;
+    let mut index = 0;
+    while index + 2 < tokens.len() {
+        if let (TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(_)) =
+            (&tokens[index], &tokens[index + 1], &tokens[index + 2])
+        {
+            if ident == "nest" && punct.as_char() == '!' {
+                count += 1;
+                index += 3;
+                continue;
+            }
+        }
+        index += 1;
+    }
+    count
 }
 
 fn filter_generics(generics: &Generics, found_names: &[String]) -> Generics {
@@ -500,18 +516,31 @@ fn convert_nest_to_structs(
     let mut new_root_fields: Vec<syn::Field> = Vec::new();
     let mut additional_structs: Vec<proc_macro2::TokenStream> = vec![];
 
+    let tuple_scope = !fields.is_empty() && fields.iter().all(|field| field.ident.is_none());
+    let tuple_nest_count = if tuple_scope {
+        fields
+            .iter()
+            .map(|field| auto_named_nest_count(&field.ty))
+            .sum()
+    } else {
+        0
+    };
+
     let mut field_name_index = 0;
     for mut field in fields {
+        let tuple_field_index = field_name_index;
+        let field_nest_count = auto_named_nest_count(&field.ty);
+        let numbered = if field.ident.is_none() {
+            tuple_nest_count > 1
+        } else {
+            field_nest_count > 1
+        };
+        let mut auto_nest_in_field = 0;
         let field_name = match field.ident {
             Some(ref ident) => ident.to_string(),
             None => {
-                let name = match field_name_index {
-                    0 => "".to_string(),
-                    index => format!("{}", index),
-                }
-                .to_string();
                 field_name_index += 1;
-                name
+                String::new()
             }
         };
 
@@ -523,7 +552,6 @@ fn convert_nest_to_structs(
             .collect::<Vec<TokenTree>>();
 
         let mut new_tokens = Vec::with_capacity(token_tree.len());
-        let mut replacement_count = 0;
         let mut index = 0;
         while index < token_tree.len() {
             // find all token trees combo `[ident=nest][punct=!][group]` which means find all `nest! { ... }`
@@ -565,17 +593,28 @@ fn convert_nest_to_structs(
                                 #item
                             });
                             index += 3;
-                            replacement_count += 1;
+                            auto_nest_in_field += 1;
                             continue;
                         }
                         NestedBody::Struct => quote! { struct },
                         NestedBody::Enum => quote! { enum },
                     };
 
+                    let suffix = if is_pascal || !numbered {
+                        None
+                    } else if field.ident.is_none() {
+                        if field_nest_count > 1 {
+                            Some(auto_nest_in_field)
+                        } else {
+                            Some(tuple_field_index)
+                        }
+                    } else {
+                        Some(auto_nest_in_field)
+                    };
                     let inner_struct_name = generated_ident(
                         &root_struct_name,
                         &field_name,
-                        replacement_count,
+                        suffix,
                         is_pascal.then_some(ident_str.as_str()),
                     );
 
@@ -598,8 +637,10 @@ fn convert_nest_to_structs(
                         #root_vis #body_type_syn #inner_struct_name #generic #group
                     });
 
+                    if ident_str == "nest" {
+                        auto_nest_in_field += 1;
+                    }
                     index += 3;
-                    replacement_count += 1;
                     continue;
                 }
             }
@@ -624,15 +665,19 @@ mod tests {
     #[test]
     fn generated_ident_uses_root_field_and_suffix() {
         assert_eq!(
-            generated_ident("Post", "author", 0, None).to_string(),
+            generated_ident("Post", "author", None, None).to_string(),
             "PostAuthor"
         );
         assert_eq!(
-            generated_ident("Post", "author", 1, None).to_string(),
+            generated_ident("Post", "author", Some(0), None).to_string(),
+            "PostAuthor0"
+        );
+        assert_eq!(
+            generated_ident("Post", "author", Some(1), None).to_string(),
             "PostAuthor1"
         );
         assert_eq!(
-            generated_ident("Post", "r#type", 0, None).to_string(),
+            generated_ident("Post", "r#type", None, None).to_string(),
             "PostType"
         );
     }
@@ -640,9 +685,17 @@ mod tests {
     #[test]
     fn generated_ident_honors_explicit_name() {
         assert_eq!(
-            generated_ident("Post", "author", 2, Some("Custom")).to_string(),
+            generated_ident("Post", "author", Some(2), Some("Custom")).to_string(),
             "Custom"
         );
+    }
+
+    #[test]
+    fn counts_only_auto_named_nests() {
+        let ty: Type = syn::parse_quote! {
+            Either<nest! { a: u8 }, Custom! { b: u8 }, nest! { c: u8 }>
+        };
+        assert_eq!(auto_named_nest_count(&ty), 2);
     }
 
     #[test]
