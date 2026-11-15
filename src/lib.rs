@@ -271,6 +271,27 @@ fn generated_ident(
     syn::Ident::new(&name, proc_macro2::Span::call_site())
 }
 
+fn contains_auto_nest(token_stream: proc_macro2::TokenStream) -> bool {
+    let tokens = token_stream.into_iter().collect::<Vec<_>>();
+    for index in 0..tokens.len() {
+        if let TokenTree::Group(group) = &tokens[index] {
+            if contains_auto_nest(group.stream()) {
+                return true;
+            }
+        }
+        if index + 2 < tokens.len() {
+            if let (TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(_)) =
+                (&tokens[index], &tokens[index + 1], &tokens[index + 2])
+            {
+                if ident == "nest" && punct.as_char() == '!' {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 fn auto_named_nest_count(ty: &Type) -> usize {
     let tokens = ty
         .clone()
@@ -709,6 +730,14 @@ fn convert_nest_to_structs(
                 }
             }
 
+            if let TokenTree::Group(group) = &token_tree[index] {
+                if contains_auto_nest(group.stream()) {
+                    return Err(syn::Error::new(
+                        group.span(),
+                        "nest! inside parentheses is not supported",
+                    ));
+                }
+            }
             new_tokens.push(token_tree[index].clone());
             index += 1;
         }
