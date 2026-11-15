@@ -7,10 +7,10 @@ struct BoundedInner<T: Clone> {
 struct Bounded<T: Clone> {
     inner: BoundedInner<T>,
 }
-struct DefaultedInner<T = String> {
+struct DefaultedInner<T> {
     value: T,
 }
-struct Defaulted<T = String> {
+struct Defaulted<T> {
     inner: DefaultedInner<T>,
 }
 struct ConstGenericInner<const N: usize> {

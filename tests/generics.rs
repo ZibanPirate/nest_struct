@@ -22,3 +22,13 @@ struct ConstGeneric<const N: usize> {
         value: [u8; N],
     },
 }
+
+#[nest_struct]
+struct Where<T>
+where
+    T: Clone,
+{
+    inner: nest! {
+        value: T,
+    },
+}
