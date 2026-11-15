@@ -404,7 +404,12 @@ fn classify_nested_body(group: &proc_macro2::Group) -> syn::Result<NestedBody> {
         return Err(combined_error);
     }
 
-    let only_stmt = block.stmts.first().unwrap();
+    let only_stmt = block.stmts.first().ok_or_else(|| {
+        syn::Error::new(
+            block.brace_token.span.open(),
+            "nest! block must contain exactly one item",
+        )
+    })?;
     let item = match only_stmt {
         syn::Stmt::Item(item) => item,
         _ => {
@@ -642,7 +647,7 @@ fn convert_nest_to_structs(
                             let item = *item;
                             let (_, ty_generics, _) = generics.split_for_impl();
                             let replacement_ty =
-                                syn::parse2::<Type>(quote! { #ident #ty_generics }).unwrap();
+                                syn::parse2::<Type>(quote! { #ident #ty_generics })?;
                             new_tokens.push(TokenTree::Group(proc_macro2::Group::new(
                                 proc_macro2::Delimiter::None,
                                 replacement_ty.into_token_stream(),
@@ -684,7 +689,7 @@ fn convert_nest_to_structs(
                     let (impl_generics, ty_generics, where_clause) =
                         struct_generic.split_for_impl();
                     let inner_struct_name_maybe_with_generic =
-                        syn::parse2::<Type>(quote! { #inner_struct_name #ty_generics }).unwrap();
+                        syn::parse2::<Type>(quote! { #inner_struct_name #ty_generics })?;
 
                     new_tokens.push(TokenTree::Group(proc_macro2::Group::new(
                         proc_macro2::Delimiter::None,
@@ -708,7 +713,7 @@ fn convert_nest_to_structs(
             index += 1;
         }
 
-        field.ty = syn::parse2(quote! { #(#new_tokens)* }).unwrap();
+        field.ty = syn::parse2(quote! { #(#new_tokens)* })?;
         new_root_fields.push(field);
     }
 
