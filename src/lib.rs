@@ -294,7 +294,23 @@ fn auto_named_nest_count(ty: &Type) -> usize {
     count
 }
 
-fn filter_generics(generics: &Generics, found_names: &[String]) -> Generics {
+fn mentions_any(tokens: proc_macro2::TokenStream, names: &[String]) -> bool {
+    tokens.into_iter().any(|token| match token {
+        TokenTree::Ident(ident) => names.contains(&ident.to_string()),
+        TokenTree::Group(group) => mentions_any(group.stream(), names),
+        _ => false,
+    })
+}
+
+fn generic_param_name(param: &syn::GenericParam) -> String {
+    match param {
+        syn::GenericParam::Lifetime(param) => param.lifetime.ident.to_string(),
+        syn::GenericParam::Type(param) => param.ident.to_string(),
+        syn::GenericParam::Const(param) => param.ident.to_string(),
+    }
+}
+
+fn filter_generics(generics: &Generics, found_names: &[String]) -> syn::Result<Generics> {
     let mut filtered = generics.clone();
     filtered.params = filtered
         .params
@@ -309,7 +325,39 @@ fn filter_generics(generics: &Generics, found_names: &[String]) -> Generics {
                 })
         })
         .collect();
-    filtered
+
+    let kept_names = filtered
+        .params
+        .iter()
+        .map(generic_param_name)
+        .collect::<Vec<_>>();
+    let dropped_names = generics
+        .params
+        .iter()
+        .map(generic_param_name)
+        .filter(|name| !kept_names.contains(name))
+        .collect::<Vec<_>>();
+
+    if !dropped_names.is_empty() {
+        for param in &filtered.params {
+            if mentions_any(param.to_token_stream(), &dropped_names) {
+                return Err(syn::Error::new(
+                    param.span(),
+                    "nested type uses a generic bound that depends on a dropped generic parameter",
+                ));
+            }
+        }
+        if let Some(where_clause) = &filtered.where_clause {
+            if mentions_any(where_clause.to_token_stream(), &dropped_names) {
+                return Err(syn::Error::new(
+                    where_clause.span(),
+                    "nested type has a where predicate that depends on a dropped generic parameter",
+                ));
+            }
+        }
+    }
+
+    Ok(filtered)
 }
 
 fn classify_nested_body(group: &proc_macro2::Group) -> syn::Result<NestedBody> {
@@ -632,7 +680,7 @@ fn convert_nest_to_structs(
                     let found_ident_names_for_generics =
                         collect_matching_idents(group.stream(), &root_generic_names);
                     let struct_generic =
-                        filter_generics(context.generics, &found_ident_names_for_generics);
+                        filter_generics(context.generics, &found_ident_names_for_generics)?;
                     let (impl_generics, ty_generics, where_clause) =
                         struct_generic.split_for_impl();
                     let inner_struct_name_maybe_with_generic =
@@ -712,7 +760,7 @@ mod tests {
     #[test]
     fn filter_generics_keeps_only_used_params() {
         let input: DeriveInput = syn::parse_quote! { struct S<T, U> { first: T, second: String } };
-        let filtered = filter_generics(&input.generics, &["T".to_string()]);
+        let filtered = filter_generics(&input.generics, &["T".to_string()]).unwrap();
         let names = filtered
             .params
             .iter()
