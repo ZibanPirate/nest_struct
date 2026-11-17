@@ -518,16 +518,15 @@ fn convert_nested_types(
             }
         };
 
-        let mut token_tree = field
+        let token_tree = field
             .ty
             .clone()
             .into_token_stream()
             .into_iter()
             .collect::<Vec<TokenTree>>();
 
-        let mut indices_to_remove: Vec<usize> = vec![];
-        let mut indices_to_replace: Vec<(usize, TokenTree)> = vec![];
-
+        let mut new_tokens = Vec::with_capacity(token_tree.len());
+        let mut replacement_count = 0;
         let mut index = 0;
         while index < token_tree.len() {
             // find all token trees combo `[ident=nest][punct=!][group]` which means find all `nest! { ... }`
@@ -538,110 +537,82 @@ fn convert_nested_types(
                 token_tree.get(index + 1),
                 token_tree.get(index + 2),
             );
-            #[allow(clippy::single_match)] // todo-zm: refactor this match into an if let
-            match (ident, punct, group) {
-                (
-                    Some(TokenTree::Ident(ident)),
-                    Some(TokenTree::Punct(punct)),
-                    Some(TokenTree::Group(group)),
-                ) => {
-                    let ident_str = ident.to_string();
-                    let is_pascal = ident_str.to_pascal_case() == ident_str;
-                    if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
-                        let inner_struct_name = generated_ident(
-                            &type_prefix,
-                            &field_name,
-                            indices_to_replace.len(),
-                            is_pascal.then_some(ident_str.as_str()),
-                        );
-
-                        let body_type_syn = match classify_nested_body(group)? {
-                            NestedBody::Block {
-                                item,
+            if let (
+                Some(TokenTree::Ident(ident)),
+                Some(TokenTree::Punct(punct)),
+                Some(TokenTree::Group(group)),
+            ) = (ident, punct, group)
+            {
+                let ident_str = ident.to_string();
+                let is_pascal = ident_str.to_pascal_case() == ident_str;
+                if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
+                    let body_type_syn = match classify_nested_body(group)? {
+                        NestedBody::Block {
+                            item,
+                            ident,
+                            generics,
+                        } => {
+                            let item = *item;
+                            let replacement_ty = syn::parse_str::<Type>(&format!(
+                                "{}{}",
                                 ident,
-                                generics,
-                            } => {
-                                let item = *item;
-                                indices_to_replace.push((
-                                    index,
-                                    TokenTree::Group(proc_macro2::Group::new(
-                                        proc_macro2::Delimiter::None,
-                                        syn::parse_str::<Type>(&format!(
-                                            "{}{}",
-                                            ident,
-                                            generics.into_token_stream()
-                                        ))
-                                        .unwrap()
-                                        .into_token_stream(),
-                                    )),
-                                ));
-                                indices_to_remove.push(index + 1);
-                                indices_to_remove.push(index + 2);
-
-                                additional_structs.push(quote! {
-                                    #[nest_struct]
-                                    #item
-                                });
-
-                                index += 2;
-                                continue;
-                            }
-                            NestedBody::Struct => quote! { struct },
-                            NestedBody::Enum => quote! { enum },
-                        };
-
-                        let used_generic_names = find_idents_in_token_tree_and_exit_early(
-                            group.stream(),
-                            &root_generic_names,
-                        );
-
-                        // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
-                        // that are used in the nested struct, identified by their names
-                        let struct_generic = filter_generics(context.generics, &used_generic_names);
-
-                        let generic = quote! { #struct_generic };
-
-                        let inner_struct_name_maybe_with_generic =
-                            syn::parse_str::<Type>(&format!("{}{}", inner_struct_name, generic))
-                                .unwrap();
-
-                        indices_to_replace.push((
-                            index,
-                            TokenTree::Group(proc_macro2::Group::new(
+                                generics.into_token_stream()
+                            ))
+                            .unwrap();
+                            new_tokens.push(TokenTree::Group(proc_macro2::Group::new(
                                 proc_macro2::Delimiter::None,
-                                inner_struct_name_maybe_with_generic.into_token_stream(),
-                            )),
-                        ));
-                        indices_to_remove.push(index + 1);
-                        indices_to_remove.push(index + 2);
+                                replacement_ty.into_token_stream(),
+                            )));
+                            additional_structs.push(quote! {
+                                #[nest_struct]
+                                #item
+                            });
+                            index += 3;
+                            replacement_count += 1;
+                            continue;
+                        }
+                        NestedBody::Struct => quote! { struct },
+                        NestedBody::Enum => quote! { enum },
+                    };
 
-                        additional_structs.push(quote! {
-                            #[nest_struct]
-                            #(#inherited_attrs)*
-                            #root_vis #body_type_syn #inner_struct_name #generic #group
-                        });
+                    let inner_struct_name = generated_ident(
+                        &type_prefix,
+                        &field_name,
+                        replacement_count,
+                        is_pascal.then_some(ident_str.as_str()),
+                    );
 
-                        index += 2;
-                    }
+                    let used_generic_names = find_idents_in_token_tree_and_exit_early(
+                        group.stream(),
+                        &root_generic_names,
+                    );
+                    let struct_generic = filter_generics(context.generics, &used_generic_names);
+                    let generic = quote! { #struct_generic };
+                    let inner_struct_name_maybe_with_generic =
+                        syn::parse_str::<Type>(&format!("{}{}", inner_struct_name, generic))
+                            .unwrap();
+
+                    new_tokens.push(TokenTree::Group(proc_macro2::Group::new(
+                        proc_macro2::Delimiter::None,
+                        inner_struct_name_maybe_with_generic.into_token_stream(),
+                    )));
+                    additional_structs.push(quote! {
+                        #[nest_struct]
+                        #(#inherited_attrs)*
+                        #root_vis #body_type_syn #inner_struct_name #generic #group
+                    });
+
+                    index += 3;
+                    replacement_count += 1;
+                    continue;
                 }
-                _ => {}
             }
 
+            new_tokens.push(token_tree[index].clone());
             index += 1;
         }
 
-        // replace `nest` with struct_name_field_name
-        for (index, token) in indices_to_replace {
-            token_tree.remove(index);
-            token_tree.insert(index, token);
-        }
-        // and remove `!` and `{ ... }`, starting from the last index and back to avoid index shifting
-        indices_to_remove.reverse();
-        for index in indices_to_remove {
-            token_tree.remove(index);
-        }
-
-        field.ty = syn::parse2(quote! { #(#token_tree)* }).unwrap();
+        field.ty = syn::parse2(quote! { #(#new_tokens)* }).unwrap();
         new_root_fields.push(field);
     }
 
