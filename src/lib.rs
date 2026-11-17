@@ -230,6 +230,13 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let original_item = item.clone();
     let input = parse_macro_input!(item as DeriveInput);
 
+    expand(input, original_item)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
+    let original_item = proc_macro2::TokenStream::from(original_item);
     let root_struct_ident = &input.ident;
     let root_vis = &input.vis;
     let root_attrs = input.attrs;
@@ -239,20 +246,17 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         Data::Struct(root_struct_body) => {
             let root_fields = match root_struct_body.fields {
                 Fields::Named(fields) => fields.named,
-                _ => return original_item,
+                _ => return Ok(original_item),
             };
 
-            let (additional_structs, new_root_fields) = match convert_nest_to_structs(
+            let (additional_structs, new_root_fields) = convert_nest_to_structs(
                 root_fields,
                 root_struct_ident,
                 None,
                 &root_generics,
                 root_vis,
                 &root_attrs,
-            ) {
-                Ok(tuple) => tuple,
-                Err(error_stream) => return TokenStream::from(error_stream),
-            };
+            )?;
 
             let expanded = quote! {
                 #(#additional_structs)*
@@ -263,7 +267,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             };
 
-            TokenStream::from(expanded)
+            Ok(expanded)
         }
         Data::Enum(root_enum_body) => {
             let root_enum_variants = root_enum_body.variants;
@@ -280,18 +284,14 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     }
                 };
 
-                let (additional_structs_for_variant, new_variant_fields) =
-                    match convert_nest_to_structs(
-                        variant_fields,
-                        root_struct_ident,
-                        Some(&variant.ident),
-                        &root_generics,
-                        root_vis,
-                        &root_attrs,
-                    ) {
-                        Ok(tuple) => tuple,
-                        Err(error_stream) => return TokenStream::from(error_stream),
-                    };
+                let (additional_structs_for_variant, new_variant_fields) = convert_nest_to_structs(
+                    variant_fields,
+                    root_struct_ident,
+                    Some(&variant.ident),
+                    &root_generics,
+                    root_vis,
+                    &root_attrs,
+                )?;
 
                 variant.fields = match variant.fields {
                     Fields::Named(fields_named) => Fields::Named(FieldsNamed {
@@ -320,9 +320,9 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
             };
 
-            TokenStream::from(expanded)
+            Ok(expanded)
         }
-        _ => original_item,
+        _ => Ok(original_item),
     }
 }
 
@@ -333,7 +333,7 @@ fn convert_nest_to_structs(
     root_generics: &Generics,
     root_vis: &syn::Visibility,
     root_attrs: &[syn::Attribute],
-) -> Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>), proc_macro2::TokenStream> {
+) -> syn::Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>)> {
     let root_attrs = root_attrs
         .iter()
         .filter(|attr| !attr.path().is_ident("doc"))
@@ -450,7 +450,7 @@ fn convert_nest_to_structs(
                                                         ));
                                                     });
 
-                                                    return Err(combined_error.to_compile_error());
+                                                    return Err(combined_error);
                                                 }
                                                 let only_stmt = block.stmts.first().unwrap();
                                                 let (item, ident, generics) = match only_stmt {
@@ -466,21 +466,17 @@ fn convert_nest_to_structs(
                                                             enum_item.generics.clone(),
                                                         ),
                                                         _ => {
-                                                            return Err(
-                                                                    syn::Error::new(
-                                                                        item.span(),
-                                                                        ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
-                                                                    ).to_compile_error()
-                                                                );
+                                                            return Err(syn::Error::new(
+                                                                item.span(),
+                                                                ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
+                                                            ));
                                                         }
                                                     },
                                                     _ => {
-                                                        return Err(
-                                                                syn::Error::new(
-                                                                    only_stmt.span(),
-                                                                    ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
-                                                                ).to_compile_error()
-                                                            );
+                                                        return Err(syn::Error::new(
+                                                            only_stmt.span(),
+                                                            ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK,
+                                                        ));
                                                     }
                                                 };
                                                 indices_to_replace.push((
@@ -530,7 +526,7 @@ fn convert_nest_to_structs(
                                                     ),
                                                 ));
 
-                                                return Err(combined_error.to_compile_error());
+                                                return Err(combined_error);
                                             }
                                         }
                                     }
