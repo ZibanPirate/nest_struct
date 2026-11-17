@@ -213,6 +213,33 @@ enum BodyType {
     Enum,
 }
 
+struct NestContext<'a> {
+    ident: &'a syn::Ident,
+    variant_ident: Option<&'a syn::Ident>,
+    generics: &'a Generics,
+    vis: &'a syn::Visibility,
+    attrs: &'a [syn::Attribute],
+}
+
+impl NestContext<'_> {
+    fn type_prefix(&self) -> String {
+        format!(
+            "{}{}",
+            self.ident,
+            self.variant_ident
+                .map(|ident| ident.to_string().to_pascal_case())
+                .unwrap_or_default()
+        )
+    }
+
+    fn inherited_attrs(&self) -> Vec<&syn::Attribute> {
+        self.attrs
+            .iter()
+            .filter(|attr| !attr.path().is_ident("doc"))
+            .collect()
+    }
+}
+
 /// Nest struct definitions with minimal syntax changes.
 /// eg:
 /// ```rust
@@ -237,7 +264,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let original_item = proc_macro2::TokenStream::from(original_item);
-    let root_struct_ident = &input.ident;
+    let root_ident = &input.ident;
     let root_vis = &input.vis;
     let root_attrs = input.attrs;
     let root_generics = input.generics;
@@ -249,20 +276,22 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 _ => return Ok(original_item),
             };
 
-            let (additional_structs, new_root_fields) = convert_nest_to_structs(
+            let (additional_structs, new_root_fields) = convert_nested_types(
                 root_fields,
-                root_struct_ident,
-                None,
-                &root_generics,
-                root_vis,
-                &root_attrs,
+                NestContext {
+                    ident: root_ident,
+                    variant_ident: None,
+                    generics: &root_generics,
+                    vis: root_vis,
+                    attrs: &root_attrs,
+                },
             )?;
 
             let expanded = quote! {
                 #(#additional_structs)*
 
                 #(#root_attrs)*
-                #root_vis struct #root_struct_ident #root_generics {
+                #root_vis struct #root_ident #root_generics {
                     #(#new_root_fields),*
                 }
             };
@@ -284,13 +313,15 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                     }
                 };
 
-                let (additional_structs_for_variant, new_variant_fields) = convert_nest_to_structs(
+                let (additional_structs_for_variant, new_variant_fields) = convert_nested_types(
                     variant_fields,
-                    root_struct_ident,
-                    Some(&variant.ident),
-                    &root_generics,
-                    root_vis,
-                    &root_attrs,
+                    NestContext {
+                        ident: root_ident,
+                        variant_ident: Some(&variant.ident),
+                        generics: &root_generics,
+                        vis: root_vis,
+                        attrs: &root_attrs,
+                    },
                 )?;
 
                 variant.fields = match variant.fields {
@@ -315,7 +346,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 #(#additional_structs)*
 
                 #(#root_attrs)*
-                #root_vis enum #root_struct_ident #root_generics {
+                #root_vis enum #root_ident #root_generics {
                     #(#new_enum_variants),*
                 }
             };
@@ -326,28 +357,16 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
     }
 }
 
-fn convert_nest_to_structs(
+fn convert_nested_types(
     fields: Punctuated<Field, Comma>,
-    root_struct_ident: &syn::Ident,
-    middle_ident: Option<&syn::Ident>,
-    root_generics: &Generics,
-    root_vis: &syn::Visibility,
-    root_attrs: &[syn::Attribute],
+    context: NestContext<'_>,
 ) -> syn::Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>)> {
-    let root_attrs = root_attrs
-        .iter()
-        .filter(|attr| !attr.path().is_ident("doc"))
-        .collect::<Vec<&syn::Attribute>>();
+    let inherited_attrs = context.inherited_attrs();
+    let type_prefix = context.type_prefix();
+    let root_vis = context.vis;
 
-    let root_struct_name = format!(
-        "{}{}",
-        root_struct_ident,
-        match middle_ident {
-            Some(ident) => ident.to_string().to_pascal_case(),
-            None => "".to_string(),
-        }
-    );
-    let root_generic_names = root_generics
+    let root_generic_names = context
+        .generics
         .clone()
         .into_token_stream()
         .into_iter()
@@ -414,7 +433,7 @@ fn convert_nest_to_structs(
                             };
                             let struct_name_maybe_numbered = format!(
                                 "{}{}{}",
-                                root_struct_name,
+                                type_prefix,
                                 field_name
                                     .strip_prefix("r#")
                                     .unwrap_or(&field_name)
@@ -547,7 +566,7 @@ fn convert_nest_to_structs(
 
                         // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
                         // that are used in the nested struct, identified by their names
-                        let mut struct_generic = root_generics.clone();
+                        let mut struct_generic = context.generics.clone();
                         struct_generic.params = struct_generic
                             .params
                             .into_iter()
@@ -580,7 +599,7 @@ fn convert_nest_to_structs(
 
                         additional_structs.push(quote! {
                             #[nest_struct]
-                            #(#root_attrs)*
+                            #(#inherited_attrs)*
                             #root_vis #body_type_syn #inner_struct_name #generic #group
                         });
 
