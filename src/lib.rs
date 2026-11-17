@@ -276,7 +276,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 _ => return Ok(original_item),
             };
 
-            let (additional_structs, new_root_fields) = convert_nest_to_structs(
+            let (additional_structs, new_root_fields) = convert_nested_types(
                 root_fields,
                 NestContext {
                     root_ident,
@@ -313,7 +313,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                     }
                 };
 
-                let (additional_structs_for_variant, new_variant_fields) = convert_nest_to_structs(
+                let (additional_structs_for_variant, new_variant_fields) = convert_nested_types(
                     variant_fields,
                     NestContext {
                         root_ident,
@@ -357,7 +357,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
     }
 }
 
-fn convert_nest_to_structs(
+fn convert_nested_types(
     fields: Punctuated<Field, Comma>,
     context: NestContext<'_>,
 ) -> syn::Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>)> {
