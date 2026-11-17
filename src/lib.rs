@@ -264,7 +264,7 @@ pub fn nest_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_macro2::TokenStream> {
     let original_item = proc_macro2::TokenStream::from(original_item);
-    let root_struct_ident = &input.ident;
+    let root_ident = &input.ident;
     let root_vis = &input.vis;
     let root_attrs = input.attrs;
     let root_generics = input.generics;
@@ -279,7 +279,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
             let (additional_structs, new_root_fields) = convert_nest_to_structs(
                 root_fields,
                 NestContext {
-                    root_ident: root_struct_ident,
+                    root_ident,
                     variant_ident: None,
                     generics: &root_generics,
                     vis: root_vis,
@@ -291,7 +291,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 #(#additional_structs)*
 
                 #(#root_attrs)*
-                #root_vis struct #root_struct_ident #root_generics {
+                #root_vis struct #root_ident #root_generics {
                     #(#new_root_fields),*
                 }
             };
@@ -316,7 +316,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 let (additional_structs_for_variant, new_variant_fields) = convert_nest_to_structs(
                     variant_fields,
                     NestContext {
-                        root_ident: root_struct_ident,
+                        root_ident,
                         variant_ident: Some(&variant.ident),
                         generics: &root_generics,
                         vis: root_vis,
@@ -346,7 +346,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 #(#additional_structs)*
 
                 #(#root_attrs)*
-                #root_vis enum #root_struct_ident #root_generics {
+                #root_vis enum #root_ident #root_generics {
                     #(#new_enum_variants),*
                 }
             };
