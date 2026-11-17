@@ -215,7 +215,7 @@ enum BodyType {
 
 struct NestContext<'a> {
     root_ident: &'a syn::Ident,
-    middle_ident: Option<&'a syn::Ident>,
+    variant_ident: Option<&'a syn::Ident>,
     generics: &'a Generics,
     vis: &'a syn::Visibility,
     attrs: &'a [syn::Attribute],
@@ -226,7 +226,7 @@ impl NestContext<'_> {
         format!(
             "{}{}",
             self.root_ident,
-            self.middle_ident
+            self.variant_ident
                 .map(|ident| ident.to_string().to_pascal_case())
                 .unwrap_or_default()
         )
@@ -280,7 +280,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 root_fields,
                 NestContext {
                     root_ident: root_struct_ident,
-                    middle_ident: None,
+                    variant_ident: None,
                     generics: &root_generics,
                     vis: root_vis,
                     attrs: &root_attrs,
@@ -317,7 +317,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                     variant_fields,
                     NestContext {
                         root_ident: root_struct_ident,
-                        middle_ident: Some(&variant.ident),
+                        variant_ident: Some(&variant.ident),
                         generics: &root_generics,
                         vis: root_vis,
                         attrs: &root_attrs,
