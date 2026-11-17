@@ -269,7 +269,7 @@ fn generated_ident(
     syn::Ident::new(&name, proc_macro2::Span::call_site())
 }
 
-fn filter_generics(generics: &Generics, found_names: &[String]) -> Generics {
+fn filter_generics(generics: &Generics, candidate_names: &[String]) -> Generics {
     let mut filtered = generics.clone();
     filtered.params = filtered
         .params
@@ -279,7 +279,7 @@ fn filter_generics(generics: &Generics, found_names: &[String]) -> Generics {
                 .to_token_stream()
                 .into_iter()
                 .any(|token| match token {
-                    TokenTree::Ident(ident) => found_names.contains(&ident.to_string()),
+                    TokenTree::Ident(ident) => candidate_names.contains(&ident.to_string()),
                     _ => false,
                 })
         })
@@ -590,16 +590,14 @@ fn convert_nested_types(
                             BodyType::Enum => quote! { enum },
                         };
 
-                        let found_ident_names_for_generics =
-                            find_idents_in_token_tree_and_exit_early(
-                                group.stream(),
-                                &root_generic_names,
-                            );
+                        let used_generic_names = find_idents_in_token_tree_and_exit_early(
+                            group.stream(),
+                            &root_generic_names,
+                        );
 
                         // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
                         // that are used in the nested struct, identified by their names
-                        let struct_generic =
-                            filter_generics(context.generics, &found_ident_names_for_generics);
+                        let struct_generic = filter_generics(context.generics, &used_generic_names);
 
                         let generic = quote! { #struct_generic };
 
