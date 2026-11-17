@@ -222,7 +222,7 @@ struct NestContext<'a> {
 }
 
 impl NestContext<'_> {
-    fn root_name(&self) -> String {
+    fn type_prefix(&self) -> String {
         format!(
             "{}{}",
             self.root_ident,
@@ -232,7 +232,7 @@ impl NestContext<'_> {
         )
     }
 
-    fn root_attrs(&self) -> Vec<&syn::Attribute> {
+    fn inherited_attrs(&self) -> Vec<&syn::Attribute> {
         self.attrs
             .iter()
             .filter(|attr| !attr.path().is_ident("doc"))
@@ -361,8 +361,8 @@ fn convert_nest_to_structs(
     fields: Punctuated<Field, Comma>,
     context: NestContext<'_>,
 ) -> syn::Result<(Vec<proc_macro2::TokenStream>, Vec<syn::Field>)> {
-    let root_attrs = context.root_attrs();
-    let root_struct_name = context.root_name();
+    let inherited_attrs = context.inherited_attrs();
+    let type_prefix = context.type_prefix();
     let root_vis = context.vis;
 
     let root_generic_names = context
@@ -433,7 +433,7 @@ fn convert_nest_to_structs(
                             };
                             let struct_name_maybe_numbered = format!(
                                 "{}{}{}",
-                                root_struct_name,
+                                type_prefix,
                                 field_name
                                     .strip_prefix("r#")
                                     .unwrap_or(&field_name)
@@ -599,7 +599,7 @@ fn convert_nest_to_structs(
 
                         additional_structs.push(quote! {
                             #[nest_struct]
-                            #(#root_attrs)*
+                            #(#inherited_attrs)*
                             #root_vis #body_type_syn #inner_struct_name #generic #group
                         });
 
