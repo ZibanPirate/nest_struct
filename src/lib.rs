@@ -613,3 +613,73 @@ fn convert_nested_types(
 
     Ok((nested_types, new_root_fields))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proc_macro2::{Delimiter, Group};
+    use quote::quote;
+
+    #[test]
+    fn generated_ident_uses_root_field_and_suffix() {
+        assert_eq!(
+            generated_ident("Post", "author", 0, None).to_string(),
+            "PostAuthor"
+        );
+        assert_eq!(
+            generated_ident("Post", "author", 1, None).to_string(),
+            "PostAuthor1"
+        );
+        assert_eq!(
+            generated_ident("Post", "r#type", 0, None).to_string(),
+            "PostType"
+        );
+    }
+
+    #[test]
+    fn generated_ident_honors_explicit_name() {
+        assert_eq!(
+            generated_ident("Post", "author", 2, Some("Custom")).to_string(),
+            "Custom"
+        );
+    }
+
+    #[test]
+    fn filter_generics_keeps_only_used_params() {
+        let input: DeriveInput = syn::parse_quote! { struct S<T, U> { first: T, second: String } };
+        let filtered = filter_generics(&input.generics, &["T".to_string()]);
+        let names = filtered
+            .params
+            .iter()
+            .map(|param| quote! { #param }.to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(names, vec!["T"]);
+    }
+
+    #[test]
+    fn classify_nested_body_kinds() {
+        let struct_group = Group::new(Delimiter::Brace, quote! { value: String });
+        assert!(matches!(
+            classify_nested_body(&struct_group).unwrap(),
+            NestedBody::Struct
+        ));
+
+        let enum_group = Group::new(Delimiter::Brace, quote! { First, Last });
+        assert!(matches!(
+            classify_nested_body(&enum_group).unwrap(),
+            NestedBody::Enum
+        ));
+
+        let block_group = Group::new(Delimiter::Brace, quote! { struct Inner { value: String } });
+        assert!(matches!(
+            classify_nested_body(&block_group).unwrap(),
+            NestedBody::Block { .. }
+        ));
+    }
+
+    #[test]
+    fn classify_nested_body_rejects_non_item_block() {
+        let group = Group::new(Delimiter::Brace, quote! { 1 + 1 });
+        assert!(classify_nested_body(&group).is_err());
+    }
+}
