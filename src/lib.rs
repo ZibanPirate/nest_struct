@@ -400,7 +400,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                 _ => return Ok(original_item),
             };
 
-            let (additional_structs, new_root_fields) = convert_nested_types(
+            let (nested_types, new_root_fields) = convert_nested_types(
                 root_fields,
                 NestContext {
                     ident: root_ident,
@@ -412,7 +412,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
             )?;
 
             let expanded = quote! {
-                #(#additional_structs)*
+                #(#nested_types)*
 
                 #(#root_attrs)*
                 #root_vis struct #root_ident #root_generics {
@@ -424,7 +424,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
         }
         Data::Enum(root_enum_body) => {
             let root_enum_variants = root_enum_body.variants;
-            let mut additional_structs = vec![];
+            let mut nested_types = vec![];
             let mut new_enum_variants = vec![];
 
             for mut variant in root_enum_variants {
@@ -437,7 +437,7 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                     }
                 };
 
-                let (additional_structs_for_variant, new_variant_fields) = convert_nested_types(
+                let (nested_types_for_variant, new_variant_fields) = convert_nested_types(
                     variant_fields,
                     NestContext {
                         ident: root_ident,
@@ -462,12 +462,12 @@ fn expand(input: DeriveInput, original_item: TokenStream) -> syn::Result<proc_ma
                     }
                 };
 
-                additional_structs.extend(additional_structs_for_variant);
+                nested_types.extend(nested_types_for_variant);
                 new_enum_variants.push(variant);
             }
 
             let expanded = quote! {
-                #(#additional_structs)*
+                #(#nested_types)*
 
                 #(#root_attrs)*
                 #root_vis enum #root_ident #root_generics {
@@ -501,7 +501,7 @@ fn convert_nested_types(
         .collect::<Vec<String>>();
 
     let mut new_root_fields: Vec<syn::Field> = Vec::new();
-    let mut additional_structs: Vec<proc_macro2::TokenStream> = vec![];
+    let mut nested_types: Vec<proc_macro2::TokenStream> = vec![];
 
     let mut field_name_index = 0;
     for mut field in fields {
@@ -518,132 +518,103 @@ fn convert_nested_types(
             }
         };
 
-        let mut token_tree = field
+        let field_tokens = field
             .ty
             .clone()
             .into_token_stream()
             .into_iter()
             .collect::<Vec<TokenTree>>();
 
-        let mut indices_to_remove: Vec<usize> = vec![];
-        let mut indices_to_replace: Vec<(usize, TokenTree)> = vec![];
-
-        let mut index = 0;
-        while index < token_tree.len() {
+        let mut rewritten_tokens = Vec::with_capacity(field_tokens.len());
+        let mut nest_index = 0;
+        let mut cursor = 0;
+        while cursor < field_tokens.len() {
             // find all token trees combo `[ident=nest][punct=!][group]` which means find all `nest! { ... }`
             // patterns, this way we handle the case where nest! is used as a generic type, e.g. Vec<nest!{ ... }>
             // or even used multiple times in a single field, e.g. Either<nest!{ ... }, nest!{ ... }>
             let (ident, punct, group) = (
-                token_tree.get(index),
-                token_tree.get(index + 1),
-                token_tree.get(index + 2),
+                field_tokens.get(cursor),
+                field_tokens.get(cursor + 1),
+                field_tokens.get(cursor + 2),
             );
-            #[allow(clippy::single_match)] // todo-zm: refactor this match into an if let
-            match (ident, punct, group) {
-                (
-                    Some(TokenTree::Ident(ident)),
-                    Some(TokenTree::Punct(punct)),
-                    Some(TokenTree::Group(group)),
-                ) => {
-                    let ident_str = ident.to_string();
-                    let is_pascal = ident_str.to_pascal_case() == ident_str;
-                    if (ident_str == "nest" || is_pascal) && punct.as_char() == '!' {
-                        let inner_struct_name = generated_ident(
-                            &type_prefix,
-                            &field_name,
-                            indices_to_replace.len(),
-                            is_pascal.then_some(ident_str.as_str()),
-                        );
-
-                        let body_type_syn = match classify_nested_body(group)? {
-                            NestedBody::Block {
-                                item,
+            if let (
+                Some(TokenTree::Ident(ident)),
+                Some(TokenTree::Punct(punct)),
+                Some(TokenTree::Group(group)),
+            ) = (ident, punct, group)
+            {
+                let ident_str = ident.to_string();
+                let has_explicit_name = ident_str.to_pascal_case() == ident_str;
+                if (ident_str == "nest" || has_explicit_name) && punct.as_char() == '!' {
+                    let body_keyword = match classify_nested_body(group)? {
+                        NestedBody::Block {
+                            item,
+                            ident,
+                            generics,
+                        } => {
+                            let item = *item;
+                            let nested_type = syn::parse_str::<Type>(&format!(
+                                "{}{}",
                                 ident,
-                                generics,
-                            } => {
-                                let item = *item;
-                                indices_to_replace.push((
-                                    index,
-                                    TokenTree::Group(proc_macro2::Group::new(
-                                        proc_macro2::Delimiter::None,
-                                        syn::parse_str::<Type>(&format!(
-                                            "{}{}",
-                                            ident,
-                                            generics.into_token_stream()
-                                        ))
-                                        .unwrap()
-                                        .into_token_stream(),
-                                    )),
-                                ));
-                                indices_to_remove.push(index + 1);
-                                indices_to_remove.push(index + 2);
-
-                                additional_structs.push(quote! {
-                                    #[nest_struct]
-                                    #item
-                                });
-
-                                index += 2;
-                                continue;
-                            }
-                            NestedBody::Struct => quote! { struct },
-                            NestedBody::Enum => quote! { enum },
-                        };
-
-                        let used_generic_names = find_idents_in_token_tree_and_exit_early(
-                            group.stream(),
-                            &root_generic_names,
-                        );
-
-                        // clone and reconstruct the root generics for the new struct, cherry-picking only the generics
-                        // that are used in the nested struct, identified by their names
-                        let struct_generic = filter_generics(context.generics, &used_generic_names);
-
-                        let generic = quote! { #struct_generic };
-
-                        let inner_struct_name_maybe_with_generic =
-                            syn::parse_str::<Type>(&format!("{}{}", inner_struct_name, generic))
-                                .unwrap();
-
-                        indices_to_replace.push((
-                            index,
-                            TokenTree::Group(proc_macro2::Group::new(
+                                generics.into_token_stream()
+                            ))
+                            .unwrap();
+                            rewritten_tokens.push(TokenTree::Group(proc_macro2::Group::new(
                                 proc_macro2::Delimiter::None,
-                                inner_struct_name_maybe_with_generic.into_token_stream(),
-                            )),
-                        ));
-                        indices_to_remove.push(index + 1);
-                        indices_to_remove.push(index + 2);
+                                nested_type.into_token_stream(),
+                            )));
+                            nested_types.push(quote! {
+                                #[nest_struct]
+                                #item
+                            });
+                            cursor += 3;
+                            nest_index += 1;
+                            continue;
+                        }
+                        NestedBody::Struct => quote! { struct },
+                        NestedBody::Enum => quote! { enum },
+                    };
 
-                        additional_structs.push(quote! {
-                            #[nest_struct]
-                            #(#inherited_attrs)*
-                            #root_vis #body_type_syn #inner_struct_name #generic #group
-                        });
+                    let nested_type_name = generated_ident(
+                        &type_prefix,
+                        &field_name,
+                        nest_index,
+                        has_explicit_name.then_some(ident_str.as_str()),
+                    );
 
-                        index += 2;
-                    }
+                    let used_generic_names = find_idents_in_token_tree_and_exit_early(
+                        group.stream(),
+                        &root_generic_names,
+                    );
+                    let nested_generics = filter_generics(context.generics, &used_generic_names);
+                    let generics_tokens = quote! { #nested_generics };
+                    let nested_type_ref =
+                        syn::parse_str::<Type>(&format!("{}{}", nested_type_name, generics_tokens))
+                            .unwrap();
+
+                    rewritten_tokens.push(TokenTree::Group(proc_macro2::Group::new(
+                        proc_macro2::Delimiter::None,
+                        nested_type_ref.into_token_stream(),
+                    )));
+                    nested_types.push(quote! {
+                        #[nest_struct]
+                        #(#inherited_attrs)*
+                        #root_vis #body_keyword #nested_type_name #generics_tokens #group
+                    });
+
+                    cursor += 3;
+                    nest_index += 1;
+                    continue;
                 }
-                _ => {}
             }
 
-            index += 1;
+            rewritten_tokens.push(field_tokens[cursor].clone());
+            cursor += 1;
         }
 
-        // replace `nest` with struct_name_field_name
-        for (index, token) in indices_to_replace {
-            token_tree.remove(index);
-            token_tree.insert(index, token);
-        }
-        // and remove `!` and `{ ... }`, starting from the last index and back to avoid index shifting
-        indices_to_remove.reverse();
-        for index in indices_to_remove {
-            token_tree.remove(index);
-        }
-
-        field.ty = syn::parse2(quote! { #(#token_tree)* }).unwrap();
+        field.ty = syn::parse2(quote! { #(#rewritten_tokens)* }).unwrap();
         new_root_fields.push(field);
     }
 
-    Ok((additional_structs, new_root_fields))
+    Ok((nested_types, new_root_fields))
 }
