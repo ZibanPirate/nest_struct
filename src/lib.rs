@@ -180,7 +180,7 @@ const ERR_MSG_MORE_THAN_ONE_STMT_IN_BLOCK: &str =
 const ERR_MSG_ONLY_STRUCT_AND_ENUM_SUPPORTED_IN_BLOCK: &str =
     "only struct and enum are supported inside nest! block";
 
-fn find_idents_in_token_tree_and_exit_early(
+fn collect_matching_idents(
     token_stream: proc_macro2::TokenStream,
     ident_names: &Vec<String>,
 ) -> Vec<String> {
@@ -193,10 +193,7 @@ fn find_idents_in_token_tree_and_exit_early(
             }
         }
         TokenTree::Group(group) => {
-            idents.extend(find_idents_in_token_tree_and_exit_early(
-                group.stream(),
-                ident_names,
-            ));
+            idents.extend(collect_matching_idents(group.stream(), ident_names));
         }
         _ => {}
     });
@@ -582,10 +579,8 @@ fn convert_nested_types(
                         has_explicit_name.then_some(ident_str.as_str()),
                     );
 
-                    let used_generic_names = find_idents_in_token_tree_and_exit_early(
-                        group.stream(),
-                        &root_generic_names,
-                    );
+                    let used_generic_names =
+                        collect_matching_idents(group.stream(), &root_generic_names);
                     let nested_generics = filter_generics(context.generics, &used_generic_names);
                     let generics_tokens = quote! { #nested_generics };
                     let nested_type_ref =
