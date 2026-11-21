@@ -264,26 +264,18 @@ fn generated_ident(
 }
 
 fn auto_named_nest_count(ty: &Type) -> usize {
-    let tokens = ty
-        .clone()
-        .into_token_stream()
+    ty.to_token_stream()
         .into_iter()
-        .collect::<Vec<_>>();
-    let mut count = 0;
-    let mut index = 0;
-    while index + 2 < tokens.len() {
-        if let (TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(_)) =
-            (&tokens[index], &tokens[index + 1], &tokens[index + 2])
-        {
-            if ident == "nest" && punct.as_char() == '!' {
-                count += 1;
-                index += 3;
-                continue;
-            }
-        }
-        index += 1;
-    }
-    count
+        .collect::<Vec<_>>()
+        .windows(3)
+        .filter(|window| {
+            matches!(
+                *window,
+                [TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(_)]
+                    if ident == "nest" && punct.as_char() == '!'
+            )
+        })
+        .count()
 }
 
 fn filter_generics(generics: &Generics, candidate_names: &[String]) -> Generics {
