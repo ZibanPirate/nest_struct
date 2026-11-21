@@ -263,6 +263,22 @@ fn generated_ident(
     syn::Ident::new(&name, proc_macro2::Span::call_site())
 }
 
+fn is_auto_named_nest(group: &proc_macro2::Group) -> bool {
+    let mut tokens = group.stream().into_iter();
+    while let Some(token) = tokens.next() {
+        match token {
+            TokenTree::Punct(punct) if punct.as_char() == '#' => {
+                tokens.next();
+            }
+            TokenTree::Ident(ident) => {
+                return !matches!(ident.to_string().as_str(), "struct" | "enum" | "pub");
+            }
+            _ => return true,
+        }
+    }
+    true
+}
+
 fn auto_named_nest_count(ty: &Type) -> usize {
     ty.to_token_stream()
         .into_iter()
@@ -271,8 +287,10 @@ fn auto_named_nest_count(ty: &Type) -> usize {
         .filter(|window| {
             matches!(
                 *window,
-                [TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(_)]
-                    if ident == "nest" && punct.as_char() == '!'
+                [TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(group)]
+                    if ident == "nest"
+                        && punct.as_char() == '!'
+                        && is_auto_named_nest(group)
             )
         })
         .count()
@@ -683,6 +701,11 @@ mod tests {
             Either<nest! { a: u8 }, Custom! { b: u8 }, nest! { c: u8 }>
         };
         assert_eq!(auto_named_nest_count(&ty), 2);
+
+        let with_block: Type = syn::parse_quote! {
+            Either<nest! { struct Named { value: u8 } }, nest! { value: u8 }>
+        };
+        assert_eq!(auto_named_nest_count(&with_block), 1);
     }
 
     #[test]
