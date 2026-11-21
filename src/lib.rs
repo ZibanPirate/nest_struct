@@ -244,30 +244,56 @@ impl NestContext<'_> {
 fn generated_ident(
     root_name: &str,
     field_name: &str,
-    nest_index: usize,
+    suffix: Option<usize>,
     explicit_name: Option<&str>,
 ) -> syn::Ident {
     let name = match explicit_name {
         Some(name) => name.to_string(),
-        None => {
-            let suffix = if nest_index == 0 {
-                String::new()
-            } else {
-                nest_index.to_string()
-            };
-            format!(
-                "{}{}{}",
-                root_name,
-                field_name
-                    .strip_prefix("r#")
-                    .unwrap_or(field_name)
-                    .to_pascal_case(),
-                suffix
-            )
-        }
+        None => format!(
+            "{}{}{}",
+            root_name,
+            field_name
+                .strip_prefix("r#")
+                .unwrap_or(field_name)
+                .to_pascal_case(),
+            suffix.map(|index| index.to_string()).unwrap_or_default()
+        ),
     };
 
     syn::Ident::new(&name, proc_macro2::Span::call_site())
+}
+
+fn is_auto_named_nest(group: &proc_macro2::Group) -> bool {
+    let mut tokens = group.stream().into_iter();
+    while let Some(token) = tokens.next() {
+        match token {
+            TokenTree::Punct(punct) if punct.as_char() == '#' => {
+                tokens.next();
+            }
+            TokenTree::Ident(ident) => {
+                return !matches!(ident.to_string().as_str(), "struct" | "enum" | "pub");
+            }
+            _ => return true,
+        }
+    }
+    true
+}
+
+fn auto_named_nest_count(ty: &Type) -> usize {
+    ty.to_token_stream()
+        .into_iter()
+        .collect::<Vec<_>>()
+        .windows(3)
+        .filter(|window| {
+            matches!(
+                *window,
+                [TokenTree::Ident(ident), TokenTree::Punct(punct), TokenTree::Group(group)]
+                    if ident == "nest"
+                        && punct.as_char() == '!'
+                        && is_auto_named_nest(group)
+            )
+        })
+        .count()
 }
 
 fn filter_generics(generics: &Generics, candidate_names: &[String]) -> Generics {
@@ -500,18 +526,32 @@ fn convert_nested_types(
     let mut new_root_fields: Vec<syn::Field> = Vec::new();
     let mut nested_types: Vec<proc_macro2::TokenStream> = vec![];
 
+    let tuple_scope = fields.iter().all(|field| field.ident.is_none());
+    let tuple_nest_count = if tuple_scope {
+        fields
+            .iter()
+            .map(|field| auto_named_nest_count(&field.ty))
+            .sum()
+    } else {
+        0
+    };
+
     let mut field_name_index = 0;
     for mut field in fields {
-        let field_name = match field.ident {
-            Some(ref ident) => ident.to_string(),
+        let tuple_field_index = field_name_index;
+        let field_nest_count = auto_named_nest_count(&field.ty);
+        let is_tuple_field = field.ident.is_none();
+        let should_number = if is_tuple_field {
+            tuple_nest_count > 1
+        } else {
+            field_nest_count > 1
+        };
+        let mut auto_nest_in_field = 0;
+        let field_name = match field.ident.as_ref() {
+            Some(ident) => ident.to_string(),
             None => {
-                let name = match field_name_index {
-                    0 => "".to_string(),
-                    index => format!("{}", index),
-                }
-                .to_string();
                 field_name_index += 1;
-                name
+                String::new()
             }
         };
 
@@ -523,7 +563,6 @@ fn convert_nested_types(
             .collect::<Vec<TokenTree>>();
 
         let mut rewritten_tokens = Vec::with_capacity(field_tokens.len());
-        let mut nest_index = 0;
         let mut cursor = 0;
         while cursor < field_tokens.len() {
             // find all token trees combo `[ident=nest][punct=!][group]` which means find all `nest! { ... }`
@@ -565,17 +604,23 @@ fn convert_nested_types(
                                 #item
                             });
                             cursor += 3;
-                            nest_index += 1;
+                            auto_nest_in_field += 1;
                             continue;
                         }
                         NestedBody::Struct => quote! { struct },
                         NestedBody::Enum => quote! { enum },
                     };
 
+                    let suffix_index = if is_tuple_field && field_nest_count == 1 {
+                        tuple_field_index
+                    } else {
+                        auto_nest_in_field
+                    };
+                    let suffix = (!has_explicit_name && should_number).then_some(suffix_index);
                     let nested_type_name = generated_ident(
                         &type_prefix,
                         &field_name,
-                        nest_index,
+                        suffix,
                         has_explicit_name.then_some(ident_str.as_str()),
                     );
 
@@ -597,8 +642,10 @@ fn convert_nested_types(
                         #root_vis #body_keyword #nested_type_name #generics_tokens #group
                     });
 
+                    if ident_str == "nest" {
+                        auto_nest_in_field += 1;
+                    }
                     cursor += 3;
-                    nest_index += 1;
                     continue;
                 }
             }
@@ -623,15 +670,19 @@ mod tests {
     #[test]
     fn generated_ident_uses_root_field_and_suffix() {
         assert_eq!(
-            generated_ident("Post", "author", 0, None).to_string(),
+            generated_ident("Post", "author", None, None).to_string(),
             "PostAuthor"
         );
         assert_eq!(
-            generated_ident("Post", "author", 1, None).to_string(),
+            generated_ident("Post", "author", Some(0), None).to_string(),
+            "PostAuthor0"
+        );
+        assert_eq!(
+            generated_ident("Post", "author", Some(1), None).to_string(),
             "PostAuthor1"
         );
         assert_eq!(
-            generated_ident("Post", "r#type", 0, None).to_string(),
+            generated_ident("Post", "r#type", None, None).to_string(),
             "PostType"
         );
     }
@@ -639,9 +690,22 @@ mod tests {
     #[test]
     fn generated_ident_honors_explicit_name() {
         assert_eq!(
-            generated_ident("Post", "author", 2, Some("Custom")).to_string(),
+            generated_ident("Post", "author", Some(2), Some("Custom")).to_string(),
             "Custom"
         );
+    }
+
+    #[test]
+    fn counts_only_auto_named_nests() {
+        let ty: Type = syn::parse_quote! {
+            Either<nest! { a: u8 }, Custom! { b: u8 }, nest! { c: u8 }>
+        };
+        assert_eq!(auto_named_nest_count(&ty), 2);
+
+        let with_block: Type = syn::parse_quote! {
+            Either<nest! { struct Named { value: u8 } }, nest! { value: u8 }>
+        };
+        assert_eq!(auto_named_nest_count(&with_block), 1);
     }
 
     #[test]
