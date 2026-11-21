@@ -508,7 +508,7 @@ fn convert_nested_types(
     let mut new_root_fields: Vec<syn::Field> = Vec::new();
     let mut nested_types: Vec<proc_macro2::TokenStream> = vec![];
 
-    let tuple_scope = !fields.is_empty() && fields.iter().all(|field| field.ident.is_none());
+    let tuple_scope = fields.iter().all(|field| field.ident.is_none());
     let tuple_nest_count = if tuple_scope {
         fields
             .iter()
@@ -522,14 +522,15 @@ fn convert_nested_types(
     for mut field in fields {
         let tuple_field_index = field_name_index;
         let field_nest_count = auto_named_nest_count(&field.ty);
-        let numbered = if field.ident.is_none() {
+        let is_tuple_field = field.ident.is_none();
+        let should_number = if is_tuple_field {
             tuple_nest_count > 1
         } else {
             field_nest_count > 1
         };
         let mut auto_nest_in_field = 0;
-        let field_name = match field.ident {
-            Some(ref ident) => ident.to_string(),
+        let field_name = match field.ident.as_ref() {
+            Some(ident) => ident.to_string(),
             None => {
                 field_name_index += 1;
                 String::new()
@@ -592,17 +593,12 @@ fn convert_nested_types(
                         NestedBody::Enum => quote! { enum },
                     };
 
-                    let suffix = if has_explicit_name || !numbered {
-                        None
-                    } else if field.ident.is_none() {
-                        if field_nest_count > 1 {
-                            Some(auto_nest_in_field)
-                        } else {
-                            Some(tuple_field_index)
-                        }
+                    let suffix_index = if is_tuple_field && field_nest_count == 1 {
+                        tuple_field_index
                     } else {
-                        Some(auto_nest_in_field)
+                        auto_nest_in_field
                     };
+                    let suffix = (!has_explicit_name && should_number).then_some(suffix_index);
                     let nested_type_name = generated_ident(
                         &type_prefix,
                         &field_name,
